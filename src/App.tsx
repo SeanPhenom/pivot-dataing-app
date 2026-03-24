@@ -24,6 +24,7 @@ const LUZMO_APP_SERVER =
 type Screen = 'profile' | 'discover' | 'dashboard'
 type SwipeDirection = 'left' | 'right'
 type SwipeBucket = 'matches' | 'skips'
+type SwipeFeedback = 'match' | 'no-match' | null
 
 type DashboardChoice = {
   id: string
@@ -67,6 +68,7 @@ type SavedConnection = {
   sourceDashboardId: string
   sourceDashboardName: string
   persona: string
+  realismMode?: boolean
   potentialMatches: PotentialMatch[]
   currentIndex: number
   matches: PotentialMatch[]
@@ -202,6 +204,9 @@ const PERSONAS = [
   'Data Engineer: SQL is my love language',
 ]
 const BOOMER_PERSONA_PREFIX = 'boomer:'
+const CAVEMAN_PERSONA_PREFIX = 'caveman:'
+const BUSINESS_PERSONA_PREFIX = 'business user:'
+const DATA_ENGINEER_PERSONA_PREFIX = 'data engineer:'
 
 const EXCLUDED_ITEM_TYPES = new Set([
   'spacer',
@@ -222,6 +227,150 @@ const DASHBOARD_EDIT_ITEM_ACTIONS_MENU = [
 ]
 const SAVED_CONNECTIONS_STORAGE_KEY = 'pivot.saved-connections.v1'
 const ACTIVE_CONNECTION_STORAGE_KEY = 'pivot.active-connection-id.v1'
+const SWIPE_FEEDBACK_VISIBLE_MS = 950
+const SWIPE_FEEDBACK_CLEAR_DELAY_MS = 1200
+const SWIPE_CARD_EXIT_MS = 220
+
+type MatchPersonaKey = 'caveman' | 'business' | 'data-engineer' | 'other'
+
+const REALISM_PERSONA_BASE_CHANCE: Record<MatchPersonaKey, number> = {
+  caveman: 0.4,
+  business: 0.6,
+  'data-engineer': 0.8,
+  other: 0.55,
+}
+const REALISM_MATCH_STRICTNESS = 0.78
+const REALISM_MAX_MATCH_CHANCE = 0.84
+
+function clampChance(value: number): number {
+  return Math.min(0.95, Math.max(0.1, value))
+}
+
+function isFilterOrControlVizType(vizType: string): boolean {
+  const normalized = vizType.trim().toLowerCase()
+  return CONTROL_WIDGET_TYPE_KEYWORDS.some((keyword) => normalized.includes(keyword))
+}
+
+function getPersonaMatchKey(persona: string): MatchPersonaKey {
+  const normalized = persona.trim().toLowerCase()
+  if (normalized.startsWith(CAVEMAN_PERSONA_PREFIX)) {
+    return 'caveman'
+  }
+  if (normalized.startsWith(BUSINESS_PERSONA_PREFIX)) {
+    return 'business'
+  }
+  if (normalized.startsWith(DATA_ENGINEER_PERSONA_PREFIX)) {
+    return 'data-engineer'
+  }
+
+  return 'other'
+}
+
+function getChartTypeModifier(vizType: string): number {
+  const normalized = vizType.trim().toLowerCase()
+
+  if (normalized.includes('evolution-number')) {
+    return 0.15
+  }
+  if (normalized.includes('number')) {
+    return 0.2
+  }
+  if (normalized.includes('bar-chart')) {
+    return 0.1
+  }
+  if (normalized.includes('column-chart')) {
+    return 0.1
+  }
+  if (normalized.includes('line-chart')) {
+    return 0.08
+  }
+  if (normalized.includes('regular-table') || normalized.includes('pivot-table')) {
+    return 0.12
+  }
+  if (normalized.includes('scatter-plot')) {
+    return -0.02
+  }
+  if (normalized.includes('heatmap')) {
+    return -0.15
+  }
+  if (normalized.includes('heat-table')) {
+    return -0.12
+  }
+  if (normalized.includes('sankey')) {
+    return -0.25
+  }
+  if (normalized.includes('funnel')) {
+    return -0.1
+  }
+  if (normalized.includes('map')) {
+    return -0.1
+  }
+
+  return 0
+}
+
+function getPersonaAffinityModifier(persona: string, vizType: string): number {
+  const personaKey = getPersonaMatchKey(persona)
+  const normalized = vizType.trim().toLowerCase()
+  const isNumber = normalized.includes('number')
+  const isEvolutionNumber = normalized.includes('evolution-number')
+  const isBarOrColumn =
+    normalized.includes('bar-chart') || normalized.includes('column-chart')
+  const isLine = normalized.includes('line-chart')
+  const isTable =
+    normalized.includes('regular-table') || normalized.includes('pivot-table')
+  const isScatter = normalized.includes('scatter-plot')
+  const isHeat = normalized.includes('heatmap') || normalized.includes('heat-table')
+  const isSankey = normalized.includes('sankey')
+
+  if (personaKey === 'caveman') {
+    if (isEvolutionNumber) return 0.1
+    if (isNumber) return 0.15
+    if (isBarOrColumn) return 0.05
+    if (isScatter) return -0.05
+    if (isHeat) return -0.1
+    if (isSankey) return -0.15
+    return 0
+  }
+
+  if (personaKey === 'business') {
+    if (isBarOrColumn || isLine) return 0.1
+    if (isTable) return 0.12
+    if (isEvolutionNumber) return 0.05
+    if (isNumber) return 0.05
+    if (isHeat) return -0.08
+    if (isSankey) return -0.12
+    return 0
+  }
+
+  if (personaKey === 'data-engineer') {
+    if (isScatter) return 0.1
+    if (isHeat) return 0.12
+    if (isSankey) return 0.1
+    if (isLine) return 0.05
+    if (isTable) return 0.03
+    if (isEvolutionNumber) return -0.05
+    if (isNumber) return -0.05
+    return 0
+  }
+
+  return 0
+}
+
+function calculateRealismMatchChance(persona: string, card: PotentialMatch): number {
+  if (isFilterOrControlVizType(card.vizType)) {
+    return 1
+  }
+
+  const personaKey = getPersonaMatchKey(persona)
+  const base = REALISM_PERSONA_BASE_CHANCE[personaKey]
+  const chartTypeModifier = getChartTypeModifier(card.vizType)
+  const personaAffinityModifier = getPersonaAffinityModifier(persona, card.vizType)
+  const weightedChance =
+    (base + chartTypeModifier + personaAffinityModifier) * REALISM_MATCH_STRICTNESS
+
+  return Math.min(REALISM_MAX_MATCH_CHANCE, clampChance(weightedChance))
+}
 function buildPivotTheme(
   themeName: string,
   colors: string[],
@@ -1778,12 +1927,14 @@ function areGridItemsEqual(a: LuzmoGridItem[], b: LuzmoGridItem[]): boolean {
 function FlexChartCard({
   card,
   onChartDataReady,
-  showMatchToast,
+  swipeFeedback,
+  showSwipeFeedback,
   theme,
 }: {
   card: PotentialMatch
   onChartDataReady?: (cardId: string, itemData: unknown) => void
-  showMatchToast?: boolean
+  swipeFeedback?: SwipeFeedback
+  showSwipeFeedback?: boolean
   theme: Record<string, unknown>
 }) {
   const vizMountRef = useRef<HTMLDivElement | null>(null)
@@ -1892,11 +2043,17 @@ function FlexChartCard({
       <div className="relative h-[270px] w-full overflow-hidden rounded-xl">
         <div ref={vizMountRef} className="h-full w-full" />
         <div
-          className={`pointer-events-none absolute left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-200 bg-emerald-50/95 px-6 py-2.5 text-base font-bold uppercase tracking-[0.09em] text-emerald-800 shadow-md transition-all duration-200 ${
-            showMatchToast ? 'opacity-100' : '-translate-y-[56%] opacity-0'
+          className={`pointer-events-none absolute left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-full border px-6 py-2.5 text-center text-sm font-semibold shadow-md transition-all duration-200 ${
+            swipeFeedback === 'no-match'
+              ? 'border-rose-200 bg-rose-50/95 text-rose-800'
+              : 'border-emerald-200 bg-emerald-50/95 text-emerald-800'
+          } ${
+            showSwipeFeedback ? 'opacity-100' : '-translate-y-[56%] opacity-0'
           }`}
         >
-          It&apos;s a match
+          {swipeFeedback === 'no-match'
+            ? "No Match: It's not you, it's the metadata"
+            : "It's a match"}
         </div>
       </div>
     </div>
@@ -2072,10 +2229,15 @@ function App() {
   const autosavePausedRef = useRef(false)
   const autosaveResumeTimerRef = useRef<number | null>(null)
   const hydratedConnectionIdRef = useRef<string | null>(null)
-  const matchToastTimerRef = useRef<number | null>(null)
+  const swipeFeedbackHideTimerRef = useRef<number | null>(null)
+  const swipeFeedbackClearTimerRef = useRef<number | null>(null)
+  const swipeAdvanceTimerRef = useRef<number | null>(null)
+  const swipeExitTimerRef = useRef<number | null>(null)
+  const swipeResolutionLockRef = useRef(false)
 
   const [screen, setScreen] = useState<Screen>('profile')
   const [selectedPersona, setSelectedPersona] = useState('')
+  const [realismModeEnabled, setRealismModeEnabled] = useState(false)
   const [dashboardOptions, setDashboardOptions] = useState<DashboardChoice[]>([])
   const [selectedDashboardId, setSelectedDashboardId] = useState('')
   const [dashboardsLoading, setDashboardsLoading] = useState(true)
@@ -2125,7 +2287,12 @@ function App() {
   const topCardResizeObserverRef = useRef<ResizeObserver | null>(null)
   const topCardResizeRafRef = useRef<number | null>(null)
   const [discoverStackHeight, setDiscoverStackHeight] = useState(760)
-  const [showMatchToast, setShowMatchToast] = useState(false)
+  const [swipeFeedback, setSwipeFeedback] = useState<SwipeFeedback>(null)
+  const [showSwipeFeedback, setShowSwipeFeedback] = useState(false)
+  const [swipeInProgress, setSwipeInProgress] = useState<{
+    cardId: string
+    direction: SwipeDirection
+  } | null>(null)
   const [csvExportInProgress, setCsvExportInProgress] = useState(false)
   const [csvExportStatus, setCsvExportStatus] = useState<{
     tone: 'idle' | 'success' | 'error'
@@ -2176,17 +2343,26 @@ function App() {
       return null
     })
   }, [])
-  const triggerMatchToast = useCallback(() => {
-    if (matchToastTimerRef.current !== null) {
-      window.clearTimeout(matchToastTimerRef.current)
-      matchToastTimerRef.current = null
+  const triggerSwipeFeedback = useCallback((nextFeedback: Exclude<SwipeFeedback, null>) => {
+    if (swipeFeedbackHideTimerRef.current !== null) {
+      window.clearTimeout(swipeFeedbackHideTimerRef.current)
+      swipeFeedbackHideTimerRef.current = null
+    }
+    if (swipeFeedbackClearTimerRef.current !== null) {
+      window.clearTimeout(swipeFeedbackClearTimerRef.current)
+      swipeFeedbackClearTimerRef.current = null
     }
 
-    setShowMatchToast(true)
-    matchToastTimerRef.current = window.setTimeout(() => {
-      setShowMatchToast(false)
-      matchToastTimerRef.current = null
-    }, 520)
+    setSwipeFeedback(nextFeedback)
+    setShowSwipeFeedback(true)
+    swipeFeedbackHideTimerRef.current = window.setTimeout(() => {
+      setShowSwipeFeedback(false)
+      swipeFeedbackHideTimerRef.current = null
+    }, SWIPE_FEEDBACK_VISIBLE_MS)
+    swipeFeedbackClearTimerRef.current = window.setTimeout(() => {
+      setSwipeFeedback(null)
+      swipeFeedbackClearTimerRef.current = null
+    }, SWIPE_FEEDBACK_CLEAR_DELAY_MS)
   }, [])
   const updateDashboardItemOptions = useCallback(
     (itemId: string, nextOptions: Record<string, unknown>) => {
@@ -2362,6 +2538,8 @@ function App() {
   const allCardsSwiped =
     potentialMatches.length > 0 && currentIndex >= potentialMatches.length
   const canStart = Boolean(selectedPersona && selectedDashboardId)
+  const isBoomerSelected = isBoomerPersona(selectedPersona)
+  const isRealismActive = realismModeEnabled && !isBoomerSelected
   const stageOrder: Screen[] = ['profile', 'discover', 'dashboard']
   const currentStageIndex = stageOrder.indexOf(screen)
   const canOpenDiscoverTab =
@@ -2470,6 +2648,7 @@ function App() {
       summaryQueueRef.current = Promise.resolve()
 
       setSelectedPersona(sanitizedConnection.persona)
+      setRealismModeEnabled(Boolean(sanitizedConnection.realismMode))
       setSelectedDashboardId(sanitizedConnection.sourceDashboardId)
       setPotentialMatches(sanitizedConnection.potentialMatches)
       setPotentialMatchesLoading(false)
@@ -2593,9 +2772,21 @@ function App() {
 
   useEffect(() => {
     return () => {
-      if (matchToastTimerRef.current !== null) {
-        window.clearTimeout(matchToastTimerRef.current)
-        matchToastTimerRef.current = null
+      if (swipeFeedbackHideTimerRef.current !== null) {
+        window.clearTimeout(swipeFeedbackHideTimerRef.current)
+        swipeFeedbackHideTimerRef.current = null
+      }
+      if (swipeFeedbackClearTimerRef.current !== null) {
+        window.clearTimeout(swipeFeedbackClearTimerRef.current)
+        swipeFeedbackClearTimerRef.current = null
+      }
+      if (swipeAdvanceTimerRef.current !== null) {
+        window.clearTimeout(swipeAdvanceTimerRef.current)
+        swipeAdvanceTimerRef.current = null
+      }
+      if (swipeExitTimerRef.current !== null) {
+        window.clearTimeout(swipeExitTimerRef.current)
+        swipeExitTimerRef.current = null
       }
     }
   }, [])
@@ -2742,6 +2933,35 @@ function App() {
   }, [screen, isDashboardLayoutEditing])
 
   useEffect(() => {
+    if (typeof document === 'undefined') {
+      return
+    }
+
+    const bodyClassName = 'pivot-edit-drawer-open'
+
+    if (editingDashboardItem) {
+      document.body.classList.add(bodyClassName)
+      const grid = gridRef.current
+      try {
+        grid?.deactivateItems?.()
+      } catch {
+        // no-op
+      }
+      if (editingDashboardItem.id) {
+        void grid?.triggerItemAction?.(editingDashboardItem.id, 'item-options', {
+          active: false,
+        })
+      }
+    } else {
+      document.body.classList.remove(bodyClassName)
+    }
+
+    return () => {
+      document.body.classList.remove(bodyClassName)
+    }
+  }, [editingDashboardItem])
+
+  useEffect(() => {
     if (!editingDashboardItem) {
       setItemEditorOptionsConfig(undefined)
       return
@@ -2869,6 +3089,7 @@ function App() {
           sourceDashboardId: connection.sourceDashboardId,
           sourceDashboardName: connection.sourceDashboardName || sourceDashboardName,
           persona: connection.persona,
+          realismMode: Boolean(connection.realismMode),
           potentialMatches,
           currentIndex,
           matches,
@@ -3604,6 +3825,7 @@ function App() {
         sourceDashboardId: selectedDashboardId,
         sourceDashboardName: dashboardName,
         persona: selectedPersona,
+        realismMode: shouldOpenDashboardDirectly ? false : realismModeEnabled,
         potentialMatches: cards,
         currentIndex: 0,
         matches: initialMatches,
@@ -3779,20 +4001,68 @@ function App() {
   }
 
   const handleSwipe = (direction: SwipeDirection) => {
-    if (!topCard) {
+    if (!topCard || swipeResolutionLockRef.current) {
       return
     }
 
+    swipeResolutionLockRef.current = true
     setOpenBucket(null)
+    const isFinalCard = currentIndex >= potentialMatches.length - 1
+    const isFinalRightSwipe = direction === 'right' && isFinalCard
 
     if (direction === 'right') {
-      triggerMatchToast()
-      setMatches((previous) => [...previous, topCard])
+      const shouldAutoMatch =
+        !isRealismActive ||
+        Math.random() < calculateRealismMatchChance(selectedPersona, topCard)
+      if (shouldAutoMatch) {
+        triggerSwipeFeedback('match')
+        setMatches((previous) => [...previous, topCard])
+      } else {
+        triggerSwipeFeedback('no-match')
+        setSkippedCards((previous) => [...previous, topCard])
+      }
     } else {
       setSkippedCards((previous) => [...previous, topCard])
     }
 
-    setCurrentIndex((previous) => previous + 1)
+    const advanceToNextCard = () => {
+      setCurrentIndex((previous) => previous + 1)
+      setSwipeInProgress(null)
+      swipeResolutionLockRef.current = false
+    }
+
+    if (swipeAdvanceTimerRef.current !== null) {
+      window.clearTimeout(swipeAdvanceTimerRef.current)
+    }
+    if (swipeExitTimerRef.current !== null) {
+      window.clearTimeout(swipeExitTimerRef.current)
+    }
+
+    if (isFinalRightSwipe) {
+      const exitDelay = Math.max(0, SWIPE_FEEDBACK_VISIBLE_MS - SWIPE_CARD_EXIT_MS)
+      swipeExitTimerRef.current = window.setTimeout(() => {
+        swipeExitTimerRef.current = null
+        setSwipeInProgress({
+          cardId: topCard.id,
+          direction,
+        })
+      }, exitDelay)
+
+      swipeAdvanceTimerRef.current = window.setTimeout(() => {
+        swipeAdvanceTimerRef.current = null
+        advanceToNextCard()
+      }, SWIPE_FEEDBACK_VISIBLE_MS)
+      return
+    }
+
+    setSwipeInProgress({
+      cardId: topCard.id,
+      direction,
+    })
+    swipeAdvanceTimerRef.current = window.setTimeout(() => {
+      swipeAdvanceTimerRef.current = null
+      advanceToNextCard()
+    }, SWIPE_CARD_EXIT_MS)
   }
 
   const handleMoveSkippedItemBackToStack = (cardId: string) => {
@@ -4082,6 +4352,49 @@ function App() {
             </article>
 
             <div className="lg:col-span-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Realism mode</p>
+                    <p className="text-xs text-slate-600">
+                      Because some data has higher standards than your ex. Expect rejection
+                    </p>
+                  </div>
+                  <button
+                    aria-checked={isRealismActive}
+                    aria-label="Toggle realism mode"
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full border transition ${
+                      isRealismActive
+                        ? 'border-teal-600 bg-teal-600'
+                        : 'border-slate-300 bg-white'
+                    } ${
+                      !selectedPersona || isBoomerSelected
+                        ? 'cursor-not-allowed opacity-50'
+                        : ''
+                    }`}
+                    disabled={!selectedPersona || isBoomerSelected}
+                    onClick={() =>
+                      setRealismModeEnabled((previous) => !previous)
+                    }
+                    role="switch"
+                    type="button"
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 rounded-full bg-white shadow transition ${
+                        isRealismActive ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                {isBoomerSelected ? (
+                  <p className="mt-2 text-xs text-slate-600">
+                    Boomer flow skips swiping and opens your CSV/table dashboard directly.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="lg:col-span-2">
               {canStart ? (
                 <button
                   className="cta-button"
@@ -4110,6 +4423,9 @@ function App() {
                 <span className="font-semibold">Persona:</span>{' '}
                 {selectedPersona || 'Not selected'}
               </p>
+              {isRealismActive ? (
+                <p className="text-sm font-semibold text-teal-700">Realism mode: ON</p>
+              ) : null}
             </div>
 
             {potentialMatchesLoading ? (
@@ -4149,20 +4465,32 @@ function App() {
                 >
                   {remainingCards.map((card, index) => {
                     const isTop = index === 0
+                    const isSwipingOut = swipeInProgress?.cardId === card.id
+                    const swipeDirection = swipeInProgress?.direction
                     return (
                       <motion.article
                         key={`${card.id}-${index}`}
                         animate={{
+                          x: isSwipingOut
+                            ? swipeDirection === 'right'
+                              ? 900
+                              : -900
+                            : 0,
+                          rotate: isSwipingOut
+                            ? swipeDirection === 'right'
+                              ? 10
+                              : -10
+                            : 0,
                           scale: 1 - index * 0.03,
                           y: index * 12,
-                          opacity: 1 - index * 0.08,
+                          opacity: isSwipingOut ? 0 : 1 - index * 0.08,
                         }}
                         className={`absolute inset-0 ${
                           isTop ? 'pointer-events-auto' : 'pointer-events-none'
                         }`}
-                        drag={isTop ? 'x' : false}
+                        drag={isTop && !isSwipingOut ? 'x' : false}
                         dragElastic={0.8}
-                        dragSnapToOrigin
+                        dragSnapToOrigin={!isSwipingOut}
                         onDragEnd={(_, info) => {
                           if (!isTop) {
                             return
@@ -4175,13 +4503,18 @@ function App() {
                           }
                         }}
                         style={{ zIndex: 50 - index }}
-                        transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+                        transition={
+                          isSwipingOut
+                            ? { duration: 0.22, ease: 'easeOut' }
+                            : { type: 'spring', stiffness: 260, damping: 24 }
+                        }
                       >
                         <div ref={isTop ? handleTopCardMount : undefined}>
                           <FlexChartCard
                             card={card}
                             onChartDataReady={isTop ? handleCardDataReady : undefined}
-                            showMatchToast={isTop ? showMatchToast : false}
+                            swipeFeedback={isTop ? swipeFeedback : null}
+                            showSwipeFeedback={isTop ? showSwipeFeedback : false}
                             theme={PIVOT_THEME}
                           />
                           <MatchProfile
@@ -4215,7 +4548,9 @@ function App() {
                     />
                   </div>
                   <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
-                    Swipe left to pass, right to match
+                    {isRealismActive
+                      ? 'Swipe left to pass, right to attempt a match'
+                      : 'Swipe left to pass, right to match'}
                   </p>
                 </div>
               </div>

@@ -240,6 +240,13 @@ luzmo-item-grid-item-actions-menu {
   --luzmo-border-color-hover: rgba(203, 213, 225, 0.62);
 }
 
+/* Hide floating grid action buttons while the right edit drawer is open */
+body.pivot-edit-drawer-open luzmo-item-grid-item-actions-menu {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 luzmo-progress-circle {
   --luzmo-progress-circle-color: var(--luzmo-primary);
 }
