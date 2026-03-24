@@ -1,0 +1,245 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pivot-bg-grad-start: #f0fdf4;
+  --pivot-bg-grad-mid: #ecfeff;
+  --pivot-bg-grad-end: #fff7ed;
+  --pivot-panel-bg: rgba(255, 255, 255, 0.82);
+  --pivot-panel-border: rgba(148, 163, 184, 0.3);
+  --pivot-surface-shadow:
+    0 16px 30px -18px rgba(15, 23, 42, 0.24),
+    0 12px 16px -18px rgba(15, 23, 42, 0.28);
+
+  --luzmo-font-family:
+    'Space Grotesk', 'Avenir Next', 'Segoe UI Variable', 'Segoe UI', sans-serif;
+  --luzmo-border-radius: 12px;
+  --luzmo-border-radius-s: 10px;
+  --luzmo-border-radius-l: 16px;
+  --luzmo-background-color: #ffffff;
+  --luzmo-background-color-hover: #f8fafc;
+  --luzmo-background-color-highlight: #ecfeff;
+  --luzmo-font-color: #0f172a;
+  --luzmo-font-color-hard: #020617;
+  --luzmo-border-color: rgba(15, 23, 42, 0.16);
+  --luzmo-border-color-full: rgb(148, 163, 184);
+  --luzmo-primary: #0f766e;
+  --luzmo-primary-hover: #0d9488;
+  --luzmo-primary-down: #115e59;
+  --luzmo-primary-focus: #0d9488;
+  --luzmo-secondary: #f97316;
+  --luzmo-secondary-hover: #fb923c;
+  --luzmo-secondary-down: #ea580c;
+  --luzmo-secondary-focus: #f97316;
+  --luzmo-positive-color: #0f766e;
+  --luzmo-negative-color: #dc2626;
+  --luzmo-button-border-radius: 999rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--luzmo-font-family);
+  background:
+    radial-gradient(circle at top left, var(--pivot-bg-grad-start), transparent 40%),
+    radial-gradient(circle at top right, var(--pivot-bg-grad-end), transparent 38%),
+    linear-gradient(165deg, var(--pivot-bg-grad-mid), #eef2ff 65%, #fffbeb);
+  color: #0f172a;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.panel-shell {
+  background: var(--pivot-panel-bg);
+  border: 1px solid var(--pivot-panel-border);
+  box-shadow: var(--pivot-surface-shadow);
+}
+
+.card-shell {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92));
+  box-shadow: var(--pivot-surface-shadow);
+}
+
+.profile-shell {
+  margin-top: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--pivot-surface-shadow);
+}
+
+.profile-label {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #0f766e;
+}
+
+.profile-value {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #1e293b;
+}
+
+.choice-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.95rem;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.choice-card:hover {
+  border-color: rgba(15, 118, 110, 0.35);
+  background: rgba(255, 255, 255, 1);
+}
+
+.choice-card-selected {
+  border-color: rgba(15, 118, 110, 0.55);
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2);
+}
+
+.cta-button {
+  width: 100%;
+  border: 0;
+  border-radius: 999rem;
+  padding: 0.82rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(120deg, #0f766e, #0ea5a4 60%, #14b8a6);
+  box-shadow: 0 14px 25px -20px rgba(15, 118, 110, 0.95);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.cta-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px -20px rgba(15, 118, 110, 1);
+}
+
+.nav-pill {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999rem;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.55rem 0.9rem;
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+
+.nav-pill:hover:not(:disabled) {
+  border-color: rgba(15, 118, 110, 0.35);
+  color: #115e59;
+}
+
+.nav-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.swipe-button {
+  border: 0;
+  border-radius: 999rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+}
+
+.swipe-button-pass {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.swipe-button-match {
+  color: #ffffff;
+  background: linear-gradient(130deg, #0891b2, #0f766e);
+}
+
+.grid-shell {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+  box-shadow: var(--pivot-surface-shadow);
+}
+
+luzmo-grid,
+luzmo-item-grid {
+  --luzmo-grid-min-height: 560px;
+  --luzmo-grid-background: transparent;
+  --luzmo-grid-item-background: rgba(255, 255, 255, 0.98);
+  --luzmo-grid-item-border-radius: 16px;
+  --luzmo-grid-item-box-shadow: 0 12px 24px -16px rgba(15, 23, 42, 0.4);
+  --luzmo-grid-item-border-color: rgba(100, 116, 139, 0.3);
+  --luzmo-grid-item-border-width: 1px;
+  --luzmo-grid-resize-handle-background: #0f766e;
+  --luzmo-grid-resize-handle-background-hover: #14b8a6;
+}
+
+/* Compact dashboard item actions (Options/Delete) */
+luzmo-item-grid-item-actions-menu {
+  --luzmo-item-grid-item-actions-padding: 0.1rem;
+  --luzmo-item-grid-item-action-group-gap: 0.12rem;
+  --luzmo-action-group-gap-size-compact: 0;
+  --luzmo-action-group-border-radius: 0.5rem;
+
+  --luzmo-action-button-min-width: 1.8rem;
+  --luzmo-action-button-height: 1.8rem;
+  --luzmo-action-button-border-radius: 0.5rem;
+  --luzmo-action-button-border-width: 1px;
+  --luzmo-action-button-icon-size: 0.82rem;
+
+  --luzmo-action-button-edge-to-text-size: 0.34rem;
+  --luzmo-action-button-edge-to-visual-size: 0.34rem;
+  --luzmo-action-button-edge-to-visual-only-size: 0.34rem;
+  --luzmo-action-button-text-to-visual: 0;
+
+  --luzmo-item-grid-item-action-button-background-color-default: rgba(15, 23, 42, 0.9);
+  --luzmo-item-grid-item-action-button-background-color-hover: rgba(30, 41, 59, 0.98);
+  --luzmo-item-grid-item-action-button-background-color-down: rgb(15, 23, 42);
+  --luzmo-item-grid-item-action-button-background-color-focus: rgba(30, 41, 59, 0.98);
+  --luzmo-item-grid-item-action-button-content-color-default: #f8fafc;
+  --luzmo-item-grid-item-action-button-content-color-hover: #ffffff;
+  --luzmo-item-grid-item-action-button-content-color-down: #ffffff;
+  --luzmo-item-grid-item-action-button-content-color-focus: #ffffff;
+
+  --luzmo-item-grid-item-delete-button-background-color-hover: #e11d48;
+  --luzmo-item-grid-item-delete-button-background-color-focus: #e11d48;
+  --luzmo-item-grid-item-delete-button-background-color-down: #be123c;
+  --luzmo-item-grid-item-delete-button-content-color-hover: #ffffff;
+  --luzmo-item-grid-item-delete-button-content-color-focus: #ffffff;
+  --luzmo-item-grid-item-delete-button-content-color-down: #ffffff;
+
+  /* Selected/toggled action tone (used for active Options button) */
+  --luzmo-primary: #0f766e;
+  --luzmo-primary-hover: #0d9488;
+  --luzmo-primary-down: #115e59;
+  --luzmo-primary-focus: #0d9488;
+
+  --luzmo-border-color: rgba(148, 163, 184, 0.45);
+  --luzmo-border-color-hover: rgba(203, 213, 225, 0.62);
+}
+
+luzmo-progress-circle {
+  --luzmo-progress-circle-color: var(--luzmo-primary);
+}
