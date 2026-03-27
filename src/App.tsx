@@ -1,5 +1,6 @@
 ﻿import { motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { AccessibleDashboard } from '@luzmo/embed'
 import { loadDataFieldsForDatasets } from '@luzmo/analytics-components-kit/utils'
 import { getOptionsConfigByItemType } from '@luzmo/dashboard-contents-types/src/lib/shared/utils/options-config'
@@ -10,12 +11,8 @@ import type {
   OptionsConfig,
 } from '@luzmo/dashboard-contents-types/src/lib/shared/utils/options-config.types'
 
-const LUZMO_AUTH_KEY =
-  import.meta.env.VITE_LUZMO_AUTH_KEY ??
-  '067a964e-b104-4f12-a271-154a9ef850be'
-const LUZMO_AUTH_TOKEN =
-  import.meta.env.VITE_LUZMO_AUTH_TOKEN ??
-  '1AtI0qOdol6mwGLgQ9ZDrRbtkvjbvwNnibhCWn3fGBR6wg0tVNUUuO5vRgiTa46Ipskv3RjRHNspoSbqil16wNmjYh9mAOCJmMNrQIWd85DpGIEg8ktSpKpuiEoIVdoQth6mJmtgbx6RIrSfj9fQLy'
+const LUZMO_AUTH_KEY = import.meta.env.VITE_LUZMO_AUTH_KEY ?? ''
+const LUZMO_AUTH_TOKEN = import.meta.env.VITE_LUZMO_AUTH_TOKEN ?? ''
 const LUZMO_API_HOST =
   import.meta.env.VITE_LUZMO_API_HOST ?? 'https://api.luzmo.com'
 const LUZMO_APP_SERVER =
@@ -82,6 +79,14 @@ type ChartSummaryStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 type ChartSummaryState = {
   status: ChartSummaryStatus
+  text: string
+}
+
+type AiModalStage = 'entry' | 'create'
+type CreateMatchMode = 'builder' | 'ai'
+
+type IqChatMessage = {
+  role: 'user' | 'assistant'
   text: string
 }
 
@@ -227,11 +232,12 @@ const DASHBOARD_EDIT_ITEM_ACTIONS_MENU = [
 ]
 const SAVED_CONNECTIONS_STORAGE_KEY = 'pivot.saved-connections.v1'
 const ACTIVE_CONNECTION_STORAGE_KEY = 'pivot.active-connection-id.v1'
-const SWIPE_FEEDBACK_VISIBLE_MS = 950
-const SWIPE_FEEDBACK_CLEAR_DELAY_MS = 1200
+const SWIPE_FEEDBACK_VISIBLE_MS = 1150
+const SWIPE_FEEDBACK_CLEAR_DELAY_MS = 1450
 const SWIPE_CARD_EXIT_MS = 220
 
 type MatchPersonaKey = 'caveman' | 'business' | 'data-engineer' | 'other'
+type ColumnTypeKey = 'hierarchy' | 'datetime' | 'currency' | 'numeric' | 'text'
 
 const REALISM_PERSONA_BASE_CHANCE: Record<MatchPersonaKey, number> = {
   caveman: 0.4,
@@ -241,6 +247,68 @@ const REALISM_PERSONA_BASE_CHANCE: Record<MatchPersonaKey, number> = {
 }
 const REALISM_MATCH_STRICTNESS = 0.78
 const REALISM_MAX_MATCH_CHANCE = 0.84
+const COLUMN_TYPE_BADGES: Record<
+  ColumnTypeKey,
+  { label: string; className: string }
+> = {
+  hierarchy: {
+    label: 'Hierarchy',
+    className: 'border-teal-300 bg-teal-50 text-teal-700',
+  },
+  datetime: {
+    label: 'Datetime',
+    className: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+  },
+  currency: {
+    label: 'Currency',
+    className: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+  },
+  numeric: {
+    label: 'Numeric',
+    className: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+  },
+  text: {
+    label: 'Text',
+    className: 'border-slate-300 bg-slate-50 text-slate-700',
+  },
+}
+
+function renderColumnTypeIcon(type: ColumnTypeKey): ReactNode {
+  if (type === 'hierarchy') {
+    return (
+      <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 16 16">
+        <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5">
+          <circle cx="8" cy="3.2" r="1.4" />
+          <circle cx="3" cy="12" r="1.4" />
+          <circle cx="8" cy="12" r="1.4" />
+          <circle cx="13" cy="12" r="1.4" />
+          <path d="M8 4.6v3.5M3 10.2h10M8 8.1h0" />
+        </g>
+      </svg>
+    )
+  }
+
+  if (type === 'datetime') {
+    return (
+      <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 16 16">
+        <g fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5">
+          <rect x="2.5" y="3" width="11" height="10.5" rx="2" />
+          <path d="M5 1.8v2.4M11 1.8v2.4M2.5 6.5h11" />
+        </g>
+      </svg>
+    )
+  }
+
+  if (type === 'currency') {
+    return <span className="text-[0.72rem] font-bold leading-none">$</span>
+  }
+
+  if (type === 'numeric') {
+    return <span className="text-[0.72rem] font-bold leading-none">#</span>
+  }
+
+  return <span className="text-[0.68rem] font-bold leading-none">T</span>
+}
 
 function clampChance(value: number): number {
   return Math.min(0.95, Math.max(0.1, value))
@@ -379,6 +447,7 @@ function buildPivotTheme(
   return {
     type: 'custom',
     name: themeName,
+    mainColor: '#0f766e',
     itemsBackground: 'rgb(255, 255, 255)',
     font: {
       fontFamily:
@@ -420,7 +489,7 @@ function buildPivotTheme(
 
 const PIVOT_THEME = buildPivotTheme(
   'pivot-signature',
-  ['#0f766e', '#14b8a6', '#0ea5a4', '#0891b2', '#6366f1', '#22c55e', '#06b6d4', '#0f172a'],
+  ['#0f766e', '#14b8a6', '#0d9488', '#10b981', '#22c55e', '#84cc16', '#64748b', '#0f172a'],
   'rgb(15, 23, 42)',
 )
 
@@ -625,6 +694,108 @@ function isHierarchyOrDatetimeSlotContent(content: VizSlotContent): boolean {
   }
 
   return false
+}
+
+function getColumnTypeKey(content: VizSlotContent): ColumnTypeKey {
+  const type = typeof content.type === 'string' ? content.type.toLowerCase() : ''
+  const subtype =
+    typeof content.subtype === 'string' ? content.subtype.toLowerCase() : ''
+  const combined = `${type} ${subtype}`
+  const hintText = `${slotValueLabel(content)} ${
+    typeof content.columnId === 'string' ? content.columnId : ''
+  }`.toLowerCase()
+
+  if (combined.includes('hierarchy')) {
+    return 'hierarchy'
+  }
+  if (
+    combined.includes('datetime') ||
+    combined.includes('date') ||
+    combined.includes('time') ||
+    combined.includes('timestamp')
+  ) {
+    return 'datetime'
+  }
+  if (combined.includes('currency') || combined.includes('money')) {
+    return 'currency'
+  }
+  if (
+    combined.includes('numeric') ||
+    combined.includes('number') ||
+    combined.includes('measure') ||
+    combined.includes('decimal') ||
+    combined.includes('double') ||
+    combined.includes('float') ||
+    combined.includes('int') ||
+    combined.includes('percent') ||
+    combined.includes('ratio')
+  ) {
+    return 'numeric'
+  }
+  if (
+    combined.includes('string') ||
+    combined.includes('text') ||
+    combined.includes('boolean') ||
+    combined.includes('bool')
+  ) {
+    return 'text'
+  }
+
+  if (
+    hintText.includes('date') ||
+    hintText.includes('time') ||
+    hintText.includes('year') ||
+    hintText.includes('month') ||
+    hintText.includes('day')
+  ) {
+    return 'datetime'
+  }
+  if (
+    hintText.includes('count') ||
+    hintText.includes('total') ||
+    hintText.includes('sum') ||
+    hintText.includes('avg') ||
+    hintText.includes('rate') ||
+    hintText.includes('score') ||
+    hintText.includes('percent') ||
+    hintText.includes('pct') ||
+    hintText.includes('ratio') ||
+    hintText.includes('cost') ||
+    hintText.includes('amount') ||
+    hintText.includes('index') ||
+    hintText.includes('velocity') ||
+    hintText.includes('hours') ||
+    hintText.includes('minutes') ||
+    hintText.includes('seconds') ||
+    hintText.includes('price') ||
+    hintText.includes('revenue') ||
+    hintText.includes('emission') ||
+    hintText.includes('consumption')
+  ) {
+    return 'numeric'
+  }
+  if (
+    hintText.includes('id') ||
+    hintText.includes('name') ||
+    hintText.includes('city') ||
+    hintText.includes('country') ||
+    hintText.includes('industry') ||
+    hintText.includes('status') ||
+    hintText.includes('segment') ||
+    hintText.includes('category')
+  ) {
+    return 'hierarchy'
+  }
+
+  const hasExplicitTypeHints = combined.trim().length > 0
+  if (
+    !hasExplicitTypeHints &&
+    (typeof content.level === 'number' || typeof content.lowestLevel === 'number')
+  ) {
+    return 'hierarchy'
+  }
+
+  return 'text'
 }
 
 function isGroupBySlotName(slotName: string): boolean {
@@ -1304,6 +1475,246 @@ async function waitWithAbort(signal: AbortSignal, delayMs: number): Promise<void
   })
 }
 
+function parseIqMessageErrorText(payload: unknown): string | null {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const candidates: unknown[] = [
+    payload.error,
+    payload.message,
+    payload.detail,
+    payload.description,
+    payload.reason,
+  ]
+
+  if (isRecord(payload.data)) {
+    candidates.push(
+      payload.data.error,
+      payload.data.message,
+      payload.data.detail,
+      payload.data.description,
+    )
+  }
+
+  const firstError = candidates.find(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0,
+  )
+  return firstError ?? null
+}
+
+function tryParseRecord(value: unknown): Record<string, unknown> | null {
+  if (isRecord(value)) {
+    return value
+  }
+
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    return isRecord(parsed) ? parsed : null
+  } catch {
+    // IQ can occasionally return explanatory text plus embedded JSON.
+    // Try to recover the first JSON object block and parse that.
+    const codeFenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
+    const candidates = [trimmed, codeFenceMatch?.[1] ?? '']
+
+    for (const candidateText of candidates) {
+      if (!candidateText) {
+        continue
+      }
+
+      let depth = 0
+      let start = -1
+      let inString = false
+      let escapeNext = false
+
+      for (let index = 0; index < candidateText.length; index += 1) {
+        const character = candidateText[index]
+
+        if (escapeNext) {
+          escapeNext = false
+          continue
+        }
+
+        if (character === '\\') {
+          escapeNext = true
+          continue
+        }
+
+        if (character === '"') {
+          inString = !inString
+          continue
+        }
+
+        if (inString) {
+          continue
+        }
+
+        if (character === '{') {
+          if (depth === 0) {
+            start = index
+          }
+          depth += 1
+          continue
+        }
+
+        if (character === '}') {
+          if (depth > 0) {
+            depth -= 1
+            if (depth === 0 && start >= 0) {
+              const objectSlice = candidateText.slice(start, index + 1)
+              try {
+                const parsedObject = JSON.parse(objectSlice) as unknown
+                if (isRecord(parsedObject)) {
+                  return parsedObject
+                }
+              } catch {
+                // Continue scanning in case a later object parses successfully.
+              }
+              start = -1
+            }
+          }
+        }
+      }
+    }
+
+    return null
+  }
+}
+
+function findIqChartPayloadCandidate(
+  payload: unknown,
+  depth = 0,
+): Record<string, unknown> | null {
+  if (depth > 6) {
+    return null
+  }
+
+  if (Array.isArray(payload)) {
+    for (const entry of payload) {
+      const nested = findIqChartPayloadCandidate(entry, depth + 1)
+      if (nested) {
+        return nested
+      }
+    }
+    return null
+  }
+
+  const record = tryParseRecord(payload)
+  if (!record) {
+    return null
+  }
+
+  const hasTypeCandidate =
+    typeof record.type === 'string' ||
+    typeof record.chart_type === 'string' ||
+    typeof record.item_type === 'string' ||
+    typeof record.viz_type === 'string'
+  const hasSlotsCandidate =
+    Array.isArray(record.slots) ||
+    Array.isArray(record.slot_content) ||
+    Array.isArray(record.slotsContents) ||
+    Array.isArray(record.slot_contents)
+
+  if (hasTypeCandidate && hasSlotsCandidate) {
+    return record
+  }
+
+  const prioritizedKeys = [
+    'chart',
+    'chart_json',
+    'chartJson',
+    'visualization',
+    'visualisation',
+    'result',
+    'response',
+    'payload',
+    'data',
+  ]
+
+  for (const key of prioritizedKeys) {
+    const nested = findIqChartPayloadCandidate(record[key], depth + 1)
+    if (nested) {
+      return nested
+    }
+  }
+
+  for (const value of Object.values(record)) {
+    const nested = findIqChartPayloadCandidate(value, depth + 1)
+    if (nested) {
+      return nested
+    }
+  }
+
+  return null
+}
+
+function parseIqGeneratedChartConfig(payload: unknown): {
+  vizType: string
+  rawSlots: VizSlot[]
+  options: Record<string, unknown>
+  title: string
+} | null {
+  const chartPayload = findIqChartPayloadCandidate(payload)
+  if (!chartPayload) {
+    return null
+  }
+
+  const vizTypeRaw =
+    (typeof chartPayload.type === 'string' ? chartPayload.type : '') ||
+    (typeof chartPayload.chart_type === 'string' ? chartPayload.chart_type : '') ||
+    (typeof chartPayload.item_type === 'string' ? chartPayload.item_type : '') ||
+    (typeof chartPayload.viz_type === 'string' ? chartPayload.viz_type : '')
+  const vizType = vizTypeRaw.trim()
+  if (!vizType) {
+    return null
+  }
+
+  const rawSlots = preserveRawSlots(
+    chartPayload.slots ??
+      chartPayload.slot_content ??
+      chartPayload.slotsContents ??
+      chartPayload.slot_contents ??
+      [],
+  )
+  const hasSlots = rawSlots.some(
+    (slot) => Array.isArray(slot.content) && slot.content.length > 0,
+  )
+  if (!hasSlots) {
+    return null
+  }
+
+  const parsedOptions =
+    tryParseRecord(chartPayload.options) ??
+    tryParseRecord(chartPayload.chart_options) ??
+    tryParseRecord(chartPayload.item_options) ??
+    {}
+
+  const title =
+    localizeText(
+      parsedOptions.title ??
+        chartPayload.title ??
+        chartPayload.chart_title ??
+        chartPayload.name,
+      '',
+    ) || `IQ ${humanizeVizType(vizType)}`
+
+  return {
+    vizType,
+    rawSlots,
+    options: parsedOptions,
+    title,
+  }
+}
+
 function isSummarizableItemType(itemType: string): boolean {
   const normalized = itemType.toLowerCase()
   if (EXCLUDED_ITEM_TYPES.has(normalized)) {
@@ -1939,6 +2350,7 @@ function FlexChartCard({
 }) {
   const vizMountRef = useRef<HTMLDivElement | null>(null)
   const onChartDataReadyRef = useRef(onChartDataReady)
+  const [isVizReady, setIsVizReady] = useState(false)
 
   useEffect(() => {
     onChartDataReadyRef.current = onChartDataReady
@@ -1949,6 +2361,8 @@ function FlexChartCard({
     if (!mount) {
       return
     }
+    setIsVizReady(false)
+    let isUnmounted = false
 
     const viz = document.createElement('luzmo-embed-viz-item') as VizItemElement
     const vizOptions = withPivotPreviewTheme(card.options ?? {}, theme)
@@ -2007,6 +2421,9 @@ function FlexChartCard({
     }
 
     const onRendered = () => {
+      if (!isUnmounted) {
+        setIsVizReady(true)
+      }
       emitDataReady()
 
       if (retryTimer !== null) {
@@ -2025,10 +2442,26 @@ function FlexChartCard({
       }, retryIntervalMs)
     }
 
+    const onVizError = () => {
+      if (!isUnmounted) {
+        setIsVizReady(true)
+      }
+    }
+
+    const readyTimeout = window.setTimeout(() => {
+      if (!isUnmounted) {
+        setIsVizReady(true)
+      }
+    }, 12000)
+
     viz.addEventListener('rendered', onRendered as EventListener)
+    viz.addEventListener('error', onVizError as EventListener)
 
     return () => {
+      isUnmounted = true
+      window.clearTimeout(readyTimeout)
       viz.removeEventListener('rendered', onRendered as EventListener)
+      viz.removeEventListener('error', onVizError as EventListener)
       if (retryTimer !== null) {
         window.clearInterval(retryTimer)
       }
@@ -2041,19 +2474,61 @@ function FlexChartCard({
   return (
     <div className="card-shell rounded-2xl p-4">
       <div className="relative h-[270px] w-full overflow-hidden rounded-xl">
-        <div ref={vizMountRef} className="h-full w-full" />
         <div
-          className={`pointer-events-none absolute left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 rounded-full border px-6 py-2.5 text-center text-sm font-semibold shadow-md transition-all duration-200 ${
-            swipeFeedback === 'no-match'
-              ? 'border-rose-200 bg-rose-50/95 text-rose-800'
-              : 'border-emerald-200 bg-emerald-50/95 text-emerald-800'
-          } ${
+          className={`h-full w-full transition-opacity duration-300 ${
+            isVizReady ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <div ref={vizMountRef} className="h-full w-full" />
+        </div>
+        {!isVizReady ? (
+          <div className="pointer-events-none absolute inset-0 z-[60] flex items-center justify-center bg-white/45">
+            <div className="pivot-heart-loader-wrap" role="status" aria-label="Loading chart">
+              <svg
+                aria-hidden="true"
+                className="pivot-heart-loader-svg"
+                viewBox="0 0 120 110"
+              >
+                <path
+                  d="M60 102C57 98 50 91 41 83C24 68 10 54 10 37C10 22 21 12 35 12C44 12 53 16 60 24C67 16 76 12 85 12C99 12 110 22 110 37C110 54 96 68 79 83C70 91 63 98 60 102Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </div>
+          </div>
+        ) : null}
+        <div
+          className={`pointer-events-none absolute left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2 transition-all duration-200 ${
             showSwipeFeedback ? 'opacity-100' : '-translate-y-[56%] opacity-0'
           }`}
         >
-          {swipeFeedback === 'no-match'
-            ? "No Match: It's not you, it's the metadata"
-            : "It's a match"}
+          {swipeFeedback === 'no-match' ? (
+            <div className="rounded-full border border-rose-200 bg-rose-50 px-6 py-2.5 text-center text-sm font-semibold text-rose-800 shadow-md">
+              No Match: It&apos;s not you, it&apos;s the metadata
+            </div>
+          ) : (
+            <div className="relative h-[170px] w-[204px]">
+              <svg
+                viewBox="0 0 120 110"
+                className="h-full w-full drop-shadow-md"
+                aria-hidden="true"
+              >
+                <path
+                  d="M60 102C57 98 50 91 41 83C24 68 10 54 10 37C10 22 21 12 35 12C44 12 53 16 60 24C67 16 76 12 85 12C99 12 110 22 110 37C110 54 96 68 79 83C70 91 63 98 60 102Z"
+                  fill="rgb(236 253 245)"
+                  stroke="rgb(167 243 208)"
+                  strokeWidth="2"
+                />
+              </svg>
+              <div className="pointer-events-none absolute left-1/2 top-[48%] z-[2] w-[146px] -translate-x-1/2 -translate-y-1/2 text-center text-sm font-semibold leading-[1.2] text-emerald-800">
+                Its a match!
+                <br />
+                Data added
+                <br />
+                to dashboard
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -2234,6 +2709,8 @@ function App() {
   const swipeAdvanceTimerRef = useRef<number | null>(null)
   const swipeExitTimerRef = useRef<number | null>(null)
   const swipeResolutionLockRef = useRef(false)
+  const iqRequestAbortRef = useRef<AbortController | null>(null)
+  const iqPromptTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const [screen, setScreen] = useState<Screen>('profile')
   const [selectedPersona, setSelectedPersona] = useState('')
@@ -2259,6 +2736,8 @@ function App() {
   const [openBucket, setOpenBucket] = useState<SwipeBucket | null>(null)
   const [autosaveResumeSignal, setAutosaveResumeSignal] = useState(0)
   const [showAiModal, setShowAiModal] = useState(false)
+  const [aiModalStage, setAiModalStage] = useState<AiModalStage>('entry')
+  const [createMatchMode, setCreateMatchMode] = useState<CreateMatchMode>('builder')
   const [showConnectionsModal, setShowConnectionsModal] = useState(false)
   const [editingDashboardItem, setEditingDashboardItem] = useState<{
     id: string
@@ -2275,6 +2754,17 @@ function App() {
   const [builderSlotsContents, setBuilderSlotsContents] = useState<VizSlot[]>([])
   const [builderSelectedDatasetId, setBuilderSelectedDatasetId] = useState('')
   const [builderError, setBuilderError] = useState('')
+  const [iqPrompt, setIqPrompt] = useState('')
+  const [iqChatMessages, setIqChatMessages] = useState<IqChatMessage[]>([])
+  const [iqGeneratedCard, setIqGeneratedCard] = useState<PotentialMatch | null>(null)
+  const [iqLoading, setIqLoading] = useState(false)
+  const [iqError, setIqError] = useState('')
+  const [iqSaveMessage, setIqSaveMessage] = useState('')
+  const [aiColumnsByDatasetId, setAiColumnsByDatasetId] = useState<
+    Record<string, VizSlotContent[]>
+  >({})
+  const [aiColumnsLoading, setAiColumnsLoading] = useState(false)
+  const [aiColumnsError, setAiColumnsError] = useState('')
   const builderSlotPanelKey = useMemo(() => {
     const mode = builderSlotsConfig.length > 0 ? 'custom' : 'auto'
     return `${builderChartType || 'unset'}-${mode}`
@@ -2532,11 +3022,48 @@ function App() {
     () => Object.keys(datasetNameById),
     [datasetNameById],
   )
+  const aiPromptDatasetId = useMemo(
+    () =>
+      builderSelectedDatasetId ||
+      builderDatasetIds[0] ||
+      potentialMatches.find((card) => card.datasetId !== 'unknown-dataset')?.datasetId ||
+      matches.find((card) => card.datasetId !== 'unknown-dataset')?.datasetId ||
+      '',
+    [builderDatasetIds, builderSelectedDatasetId, matches, potentialMatches],
+  )
+  const aiPromptDatasetName = useMemo(
+    () =>
+      datasetNameById[aiPromptDatasetId] ||
+      potentialMatches.find((card) => card.datasetId === aiPromptDatasetId)?.datasetName ||
+      matches.find((card) => card.datasetId === aiPromptDatasetId)?.datasetName ||
+      selectedDashboard?.name ||
+      activeDashboardName ||
+      'Selected data',
+    [
+      activeDashboardName,
+      aiPromptDatasetId,
+      datasetNameById,
+      matches,
+      potentialMatches,
+      selectedDashboard,
+    ],
+  )
+  const aiAvailableColumns = useMemo(
+    () =>
+      aiPromptDatasetId
+        ? [...(aiColumnsByDatasetId[aiPromptDatasetId] ?? [])].sort((left, right) =>
+            slotValueLabel(left).localeCompare(slotValueLabel(right)),
+          )
+        : [],
+    [aiColumnsByDatasetId, aiPromptDatasetId],
+  )
 
   const topCard = potentialMatches[currentIndex]
   const remainingCards = potentialMatches.slice(currentIndex, currentIndex + 3)
   const allCardsSwiped =
     potentialMatches.length > 0 && currentIndex >= potentialMatches.length
+  const isBuilderModalActive =
+    showAiModal && aiModalStage === 'create' && createMatchMode === 'builder'
   const canStart = Boolean(selectedPersona && selectedDashboardId)
   const isBoomerSelected = isBoomerPersona(selectedPersona)
   const isRealismActive = realismModeEnabled && !isBoomerSelected
@@ -3118,6 +3645,14 @@ function App() {
 
   useEffect(() => {
     if (screen === 'discover' && allCardsSwiped && !potentialMatchesLoading) {
+      setAiModalStage('entry')
+      setCreateMatchMode('builder')
+      setIqPrompt('')
+      setIqChatMessages([])
+      setIqGeneratedCard(null)
+      setIqLoading(false)
+      setIqError('')
+      setIqSaveMessage('')
       setShowAiModal(true)
     }
   }, [allCardsSwiped, potentialMatchesLoading, screen])
@@ -3127,6 +3662,16 @@ function App() {
       setShowAiModal(false)
     }
   }, [screen, showAiModal])
+
+  useEffect(() => {
+    if (showAiModal) {
+      return
+    }
+
+    iqRequestAbortRef.current?.abort()
+    iqRequestAbortRef.current = null
+    setIqLoading(false)
+  }, [showAiModal])
 
   useEffect(() => {
     const csvViz = csvExportVizRef.current
@@ -3308,7 +3853,7 @@ function App() {
   }, [activeCsvExportCard, activeConnectionName, activeDashboardName])
 
   useEffect(() => {
-    if (!showAiModal) {
+    if (!isBuilderModalActive) {
       return
     }
 
@@ -3319,10 +3864,15 @@ function App() {
     setBuilderSelectedDatasetId(
       (previous) => previous || builderDatasetIds[0] || potentialMatches[0]?.datasetId || '',
     )
-  }, [showAiModal, builderChartTypeOptions, builderDatasetIds, potentialMatches])
+  }, [
+    isBuilderModalActive,
+    builderChartTypeOptions,
+    builderDatasetIds,
+    potentialMatches,
+  ])
 
   useEffect(() => {
-    if (!showAiModal) {
+    if (!isBuilderModalActive) {
       return
     }
 
@@ -3352,11 +3902,11 @@ function App() {
     return () => {
       isCancelled = true
     }
-  }, [showAiModal, builderChartType, builderChartTypeOptions])
+  }, [isBuilderModalActive, builderChartType, builderChartTypeOptions])
 
   useEffect(() => {
     const panel = slotPickerPanelRef.current
-    if (!panel || !showAiModal) {
+    if (!panel || !isBuilderModalActive) {
       return
     }
 
@@ -3379,7 +3929,7 @@ function App() {
     panel.selects = 'single'
     panel.grows = true
   }, [
-    showAiModal,
+    isBuilderModalActive,
     builderChartType,
     builderChartTypeOptions,
     builderSlotsConfig,
@@ -3390,7 +3940,7 @@ function App() {
 
   useEffect(() => {
     const panel = slotPickerPanelRef.current
-    if (!panel || !showAiModal) {
+    if (!panel || !isBuilderModalActive) {
       return
     }
 
@@ -3428,7 +3978,7 @@ function App() {
       panel.removeEventListener('luzmo-slots-contents-changed', handleSlotsChanged)
       panel.removeEventListener('luzmo-dataset-changed', handleDatasetChanged)
     }
-  }, [showAiModal, builderError])
+  }, [isBuilderModalActive, builderError])
 
   useEffect(() => {
     chartSummariesRef.current = chartSummaries
@@ -3456,6 +4006,8 @@ function App() {
         window.clearTimeout(autosaveResumeTimerRef.current)
         autosaveResumeTimerRef.current = null
       }
+      iqRequestAbortRef.current?.abort()
+      iqRequestAbortRef.current = null
     },
     [],
   )
@@ -3908,10 +4460,6 @@ function App() {
   }
 
   const handleReopenSkippedCards = () => {
-    if (skippedCards.length === 0) {
-      return
-    }
-
     const skippedIds = new Set(skippedCards.map((card) => card.id))
     const basePotentialMatches = potentialMatches.filter(
       (card) => !skippedIds.has(card.id),
@@ -3933,6 +4481,327 @@ function App() {
     setSkippedCards([])
     setScreen('discover')
   }
+
+  const handleEnterCreateMatchMode = () => {
+    setAiModalStage('create')
+    setIqError('')
+    setIqSaveMessage('')
+  }
+
+  const buildPotentialMatchFromIqConfig = useCallback(
+    (payload: unknown): PotentialMatch | null => {
+      const parsedConfig = parseIqGeneratedChartConfig(payload)
+      if (!parsedConfig) {
+        return null
+      }
+
+      const normalizedSlots = normalizeSlots(parsedConfig.rawSlots)
+      const datasetIdFromSlots = inferDatasetId(normalizedSlots)
+      const fallbackDatasetId =
+        builderSelectedDatasetId ||
+        builderDatasetIds[0] ||
+        potentialMatches.find((card) => card.datasetId !== 'unknown-dataset')?.datasetId ||
+        matches.find((card) => card.datasetId !== 'unknown-dataset')?.datasetId ||
+        'unknown-dataset'
+      const datasetId =
+        datasetIdFromSlots && datasetIdFromSlots !== 'unknown-dataset'
+          ? datasetIdFromSlots
+          : fallbackDatasetId
+
+      const datasetName =
+        datasetNameById[datasetId] ||
+        potentialMatches.find((card) => card.datasetId === datasetId)?.datasetName ||
+        matches.find((card) => card.datasetId === datasetId)?.datasetName ||
+        selectedDashboard?.name ||
+        activeDashboardName ||
+        'Selected Dataset'
+
+      const generatedId = `ai-chart-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      const sourceDashboardName =
+        selectedDashboard?.name || activeDashboardName || 'Selected Dashboard'
+      const generatedTitle = parsedConfig.title.trim() || `IQ ${humanizeVizType(parsedConfig.vizType)}`
+      const optionsWithTitle = {
+        ...parsedConfig.options,
+        title:
+          (isRecord(parsedConfig.options.title) || typeof parsedConfig.options.title === 'string'
+            ? parsedConfig.options.title
+            : { en: generatedTitle }),
+      }
+
+      return {
+        id: generatedId,
+        renderMode: 'flex-config',
+        useItemReference: false,
+        sourceDashboardId: selectedDashboardId,
+        sourceItemId: generatedId,
+        title: generatedTitle,
+        chartType: humanizeVizType(parsedConfig.vizType),
+        vizType: parsedConfig.vizType,
+        datasetId,
+        datasetName,
+        sourceDashboardName,
+        rawSlots: normalizedSlots,
+        slots: normalizedSlots,
+        aiSummary:
+          'Generated by Luzmo AI Chart. Save it to your dashboard if this match looks right.',
+        options: optionsWithTitle,
+      }
+    },
+    [
+      activeDashboardName,
+      builderDatasetIds,
+      builderSelectedDatasetId,
+      datasetNameById,
+      matches,
+      potentialMatches,
+      selectedDashboard,
+      selectedDashboardId,
+    ],
+  )
+
+  const handleAppendAiColumnToPrompt = useCallback((column: VizSlotContent) => {
+    const columnLabel = slotValueLabel(column).trim()
+    if (!columnLabel) {
+      return
+    }
+
+    setIqPrompt((previous) => {
+      const trimmed = previous.trim()
+      if (!trimmed) {
+        return columnLabel
+      }
+      return `${trimmed}, ${columnLabel}`
+    })
+
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        const textarea = iqPromptTextareaRef.current
+        if (!textarea) {
+          return
+        }
+        textarea.focus()
+        const cursorPosition = textarea.value.length
+        textarea.setSelectionRange(cursorPosition, cursorPosition)
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showAiModal || aiModalStage !== 'create' || createMatchMode !== 'ai') {
+      return
+    }
+
+    const datasetId = aiPromptDatasetId.trim()
+    if (!datasetId || datasetId === 'unknown-dataset') {
+      setAiColumnsLoading(false)
+      setAiColumnsError('No dataset selected for column suggestions.')
+      return
+    }
+
+    const cachedColumns = aiColumnsByDatasetId[datasetId]
+    if (Array.isArray(cachedColumns)) {
+      setAiColumnsLoading(false)
+      setAiColumnsError(
+        cachedColumns.length === 0
+          ? 'No dataset columns are available for quick prompt insertion.'
+          : '',
+      )
+      return
+    }
+
+    let cancelled = false
+    setAiColumnsLoading(true)
+    setAiColumnsError('')
+
+    const loadColumns = async () => {
+      let columns = await fetchDatasetColumnContents(datasetId)
+      if (columns.length === 0) {
+        columns = extractDatasetColumnContentsFromCards(
+          [...potentialMatches, ...matches],
+          datasetId,
+        )
+      }
+
+      const dedupedColumns = dedupeSlotContentsByColumn(columns)
+      if (cancelled) {
+        return
+      }
+
+      setAiColumnsByDatasetId((previous) => ({
+        ...previous,
+        [datasetId]: dedupedColumns,
+      }))
+      if (dedupedColumns.length === 0) {
+        setAiColumnsError('No dataset columns are available for quick prompt insertion.')
+      }
+    }
+
+    void loadColumns()
+      .catch(() => {
+        if (!cancelled) {
+          setAiColumnsError('Could not load dataset columns for AI prompt hints.')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAiColumnsLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    aiColumnsByDatasetId,
+    aiModalStage,
+    aiPromptDatasetId,
+    createMatchMode,
+    matches,
+    potentialMatches,
+    showAiModal,
+  ])
+
+  const handleGenerateIqChart = useCallback(async () => {
+    const prompt = iqPrompt.trim()
+    if (!prompt) {
+      setIqError('Describe the chart you want to generate first.')
+      return
+    }
+
+    const datasetId = aiPromptDatasetId
+    if (!datasetId || datasetId === 'unknown-dataset') {
+      setIqError('No dataset is selected for AI chart generation.')
+      return
+    }
+
+    iqRequestAbortRef.current?.abort()
+    const controller = new AbortController()
+    iqRequestAbortRef.current = controller
+
+    setIqLoading(true)
+    setIqError('')
+    setIqSaveMessage('')
+    setIqGeneratedCard(null)
+    setIqChatMessages((previous) => [...previous, { role: 'user', text: prompt }])
+    setIqPrompt('')
+
+    let lastError = 'Could not generate a chart with AI Chart.'
+
+    try {
+      const payload = {
+        version: '0.1.0',
+        action: 'create',
+        key: LUZMO_AUTH_KEY,
+        token: LUZMO_AUTH_TOKEN,
+        properties: {
+          type: 'generate-chart',
+          dataset_id: datasetId,
+          question: prompt,
+        },
+      }
+
+      const requestOnce = async (): Promise<unknown> => {
+        const response = await fetch(`${LUZMO_API_HOST.replace(/\/$/, '')}/0.1.0/aichart`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        })
+
+        const contentType = response.headers.get('content-type') ?? ''
+        const isJsonResponse = contentType.includes('application/json')
+        if (!response.ok) {
+          let errorPayload: unknown = null
+          let errorText = ''
+          if (isJsonResponse) {
+            errorPayload = await response.json().catch(() => null)
+          } else {
+            errorText = await response.text().catch(() => '')
+          }
+          const requestError =
+            parseIqMessageErrorText(errorPayload) ??
+            (errorPayload ? JSON.stringify(errorPayload).slice(0, 320) : null) ??
+            (errorText.trim() || null) ??
+            `createAI-Chart request failed (${response.status}).`
+          throw new Error(requestError)
+        }
+
+        return (await response.json().catch(() => null)) as unknown
+      }
+
+      let payloadJson: unknown = null
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        try {
+          payloadJson = await requestOnce()
+          break
+        } catch (requestError) {
+          const requestMessage =
+            requestError instanceof Error && requestError.message.trim()
+              ? requestError.message
+              : lastError
+          lastError = requestMessage
+
+          if (attempt === 2) {
+            setIqError(requestMessage)
+            return
+          }
+        }
+      }
+
+      const generatedCard = buildPotentialMatchFromIqConfig(payloadJson)
+      if (!generatedCard) {
+        const errorText = parseIqMessageErrorText(payloadJson)
+        setIqError(
+          errorText ||
+            'AI Chart returned no usable chart object. Try a more specific chart request.',
+        )
+        return
+      }
+
+      setIqGeneratedCard(generatedCard)
+      setIqChatMessages((previous) => [
+        ...previous,
+        {
+          role: 'assistant',
+          text: 'Chart generated. Added to swipe stack.',
+        },
+      ])
+      setPotentialMatches((previous) => {
+        if (previous.some((card) => card.id === generatedCard.id)) {
+          return previous
+        }
+        const next = [...previous, generatedCard]
+        setCurrentIndex(next.length - 1)
+        return next
+      })
+      setShowAiModal(false)
+      setAiModalStage('entry')
+      setScreen('discover')
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return
+      }
+
+      const message =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : 'Could not generate a chart with AI Chart.'
+      setIqError(message)
+    } finally {
+      if (iqRequestAbortRef.current === controller) {
+        iqRequestAbortRef.current = null
+      }
+      setIqLoading(false)
+    }
+  }, [
+    aiPromptDatasetId,
+    buildPotentialMatchFromIqConfig,
+    iqPrompt,
+    matches,
+    potentialMatches,
+  ])
 
   const handleStartConnectionRename = (connection: SavedConnection) => {
     setEditingConnectionId(connection.id)
@@ -4192,6 +5061,7 @@ function App() {
     setBuilderError('')
     setBuilderSlotsContents([])
     setShowAiModal(false)
+    setAiModalStage('entry')
     setIsDashboardLayoutEditing(false)
     setScreen('discover')
   }
@@ -4272,7 +5142,7 @@ function App() {
                 What data persona are you?
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                Select your data persona
+                Select your data persona. Be warned, in Realism mode your data persona affects how likely it is the data will match with you!
               </p>
               <div className="mt-4 space-y-3">
                 {PERSONAS.map((persona) => {
@@ -4352,45 +5222,56 @@ function App() {
             </article>
 
             <div className="lg:col-span-2">
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="flex items-stretch justify-between gap-4">
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-800">Realism mode</p>
                     <p className="text-xs text-slate-600">
                       Because some data has higher standards than your ex. Expect rejection
                     </p>
+                    {isBoomerSelected ? (
+                      <p className="mt-2 text-xs text-slate-600">
+                        Boomer flow skips swiping and opens your CSV/table dashboard directly.
+                      </p>
+                    ) : null}
                   </div>
-                  <button
-                    aria-checked={isRealismActive}
-                    aria-label="Toggle realism mode"
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full border transition ${
-                      isRealismActive
-                        ? 'border-teal-600 bg-teal-600'
-                        : 'border-slate-300 bg-white'
-                    } ${
-                      !selectedPersona || isBoomerSelected
-                        ? 'cursor-not-allowed opacity-50'
-                        : ''
-                    }`}
-                    disabled={!selectedPersona || isBoomerSelected}
-                    onClick={() =>
-                      setRealismModeEnabled((previous) => !previous)
-                    }
-                    role="switch"
-                    type="button"
-                  >
+                  <div className="flex shrink-0 items-center gap-2">
                     <span
-                      className={`inline-block h-5 w-5 rounded-full bg-white shadow transition ${
-                        isRealismActive ? 'translate-x-6' : 'translate-x-1'
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                        isRealismActive
+                          ? 'bg-teal-100 text-teal-800'
+                          : 'bg-slate-200 text-slate-600'
                       }`}
-                    />
-                  </button>
+                    >
+                      {isRealismActive ? 'On' : 'Off'}
+                    </span>
+                    <button
+                      aria-checked={isRealismActive}
+                      aria-label="Toggle realism mode"
+                      className={`relative inline-flex h-10 w-20 items-center rounded-full border-2 transition-all duration-200 ${
+                        isRealismActive
+                          ? 'border-teal-700 bg-gradient-to-r from-teal-600 to-emerald-500 shadow-[0_0_0_3px_rgba(20,184,166,0.22)]'
+                          : 'border-slate-300 bg-white'
+                      } ${
+                        !selectedPersona || isBoomerSelected
+                          ? 'cursor-not-allowed opacity-50'
+                          : ''
+                      }`}
+                      disabled={!selectedPersona || isBoomerSelected}
+                      onClick={() =>
+                        setRealismModeEnabled((previous) => !previous)
+                      }
+                      role="switch"
+                      type="button"
+                    >
+                      <span
+                        className={`inline-block h-8 w-8 rounded-full bg-white shadow transition-transform duration-200 ${
+                          isRealismActive ? 'translate-x-10' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
-                {isBoomerSelected ? (
-                  <p className="mt-2 text-xs text-slate-600">
-                    Boomer flow skips swiping and opens your CSV/table dashboard directly.
-                  </p>
-                ) : null}
               </div>
             </div>
 
@@ -4469,7 +5350,7 @@ function App() {
                     const swipeDirection = swipeInProgress?.direction
                     return (
                       <motion.article
-                        key={`${card.id}-${index}`}
+                        key={card.id}
                         animate={{
                           x: isSwipingOut
                             ? swipeDirection === 'right'
@@ -4483,7 +5364,7 @@ function App() {
                             : 0,
                           scale: 1 - index * 0.03,
                           y: index * 12,
-                          opacity: isSwipingOut ? 0 : 1 - index * 0.08,
+                          opacity: isSwipingOut ? 0 : 1,
                         }}
                         className={`absolute inset-0 ${
                           isTop ? 'pointer-events-auto' : 'pointer-events-none'
@@ -4512,7 +5393,7 @@ function App() {
                         <div ref={isTop ? handleTopCardMount : undefined}>
                           <FlexChartCard
                             card={card}
-                            onChartDataReady={isTop ? handleCardDataReady : undefined}
+                            onChartDataReady={handleCardDataReady}
                             swipeFeedback={isTop ? swipeFeedback : null}
                             showSwipeFeedback={isTop ? showSwipeFeedback : false}
                             theme={PIVOT_THEME}
@@ -4556,35 +5437,6 @@ function App() {
               </div>
             ) : null}
 
-            {!potentialMatchesLoading &&
-            !potentialMatchesError &&
-            !topCard &&
-            potentialMatches.length > 0 ? (
-              <div className="panel-shell rounded-2xl p-6 text-center">
-                <h2 className="text-2xl font-semibold text-slate-900">
-                  You have swiped all potential matches
-                </h2>
-                <p className="mt-2 text-slate-600">
-                  Still want to create your perfect Data match with AI? Or jump to your dashboard
-                </p>
-                <div className="mt-5 flex justify-center gap-3">
-                  <button
-                    className="swipe-button swipe-button-pass"
-                    onClick={() => setShowAiModal(true)}
-                    type="button"
-                  >
-                    Create your perfect Data Match
-                  </button>
-                  <button
-                    className="swipe-button swipe-button-match"
-                    onClick={handleGoToActiveDashboard}
-                    type="button"
-                  >
-                    Go to dashboard
-                  </button>
-                </div>
-              </div>
-            ) : null}
           </section>
         ) : null}
 
@@ -4615,11 +5467,10 @@ function App() {
                 </p>
                 <button
                   className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800 hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={skippedCards.length === 0}
                   onClick={handleReopenSkippedCards}
                   type="button"
                 >
-                  Re-open skipped cards ({skippedCards.length})
+                  Re-open skipped cards ({skippedCards.length})/create new data profiles
                 </button>
               </div>
             </div>
@@ -4661,7 +5512,7 @@ function App() {
                 charts you want in your dashboard.
               </div>
             ) : (
-              <div className="grid-shell rounded-2xl p-3 md:p-4">
+              <div className="relative grid-shell rounded-2xl p-3 md:p-4">
                 <luzmo-grid
                   ref={gridRef}
                   className="block min-h-[560px] w-full rounded-xl"
@@ -4829,79 +5680,273 @@ function App() {
 
       {showAiModal ? (
         <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/40 px-4 py-4 sm:py-6">
-          <div className="mx-auto flex w-full max-w-xl flex-col rounded-2xl bg-white p-5 shadow-2xl max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)]">
+          <div className="mx-auto flex min-h-full w-full items-start justify-center pt-[10vh] sm:pt-[12vh]">
+            <div className="flex w-full max-w-xl flex-col rounded-2xl bg-white p-5 shadow-2xl max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)]">
             <div className="overflow-y-auto pr-1">
               <h3 className="text-xl font-semibold text-slate-900">
                 You are out of possible data connections. Want to try to create your perfect data match?
               </h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Choose a chart type first, then fill the matching slots below. Or go directly to your dashboard
-              </p>
+              {aiModalStage === 'entry' ? (
+                <>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Choose how you want to continue.
+                  </p>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <button
+                      className="swipe-button swipe-button-match"
+                      onClick={handleEnterCreateMatchMode}
+                      type="button"
+                    >
+                      Create your own perfect data match
+                    </button>
+                    <button
+                      className="swipe-button swipe-button-neutral"
+                      onClick={() => {
+                        setShowAiModal(false)
+                        handleGoToActiveDashboard()
+                      }}
+                      type="button"
+                    >
+                      Go directly to dashboard
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {createMatchMode === 'builder'
+                      ? 'Choose a chart type first, then fill the matching slots below. Or go directly to your dashboard'
+                      : 'Describe the chart you want. We will generate it through Luzmo AI Chart. Or, go directly to your dashboard'}
+                  </p>
 
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <label
-                  htmlFor="builder-chart-type"
-                  className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500"
-                >
-                  Chart type
-                </label>
-                <select
-                  id="builder-chart-type"
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
-                  onChange={(event) => {
-                    setBuilderChartType(event.target.value)
-                    setBuilderSlotsContents([])
-                    if (builderError) {
-                      setBuilderError('')
-                    }
-                  }}
-                  value={builderChartType}
-                >
-                  {builderChartTypeOptions.map((chartTypeOption) => (
-                    <option key={chartTypeOption} value={chartTypeOption}>
-                      {humanizeVizType(chartTypeOption)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div className="mt-4 flex justify-center">
+                    <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
+                      <button
+                        className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                          createMatchMode === 'builder'
+                            ? 'bg-teal-600 text-white'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                        onClick={() => {
+                          setCreateMatchMode('builder')
+                          setIqError('')
+                          setIqSaveMessage('')
+                        }}
+                        type="button"
+                      >
+                        Build it yourself
+                      </button>
+                      <button
+                        className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                          createMatchMode === 'ai'
+                            ? 'bg-teal-600 text-white'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                        onClick={() => {
+                          setCreateMatchMode('ai')
+                          setBuilderError('')
+                        }}
+                        type="button"
+                      >
+                        Use AI
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-                  Configure slots
-                </p>
-                <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
-                  <luzmo-item-slot-picker-panel
-                    key={builderSlotPanelKey}
-                    ref={slotPickerPanelRef}
-                  />
+                  {createMatchMode === 'builder' ? (
+                    <>
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <label
+                          htmlFor="builder-chart-type"
+                          className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500"
+                        >
+                          Chart type
+                        </label>
+                        <select
+                          id="builder-chart-type"
+                          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
+                          onChange={(event) => {
+                            setBuilderChartType(event.target.value)
+                            setBuilderSlotsContents([])
+                            if (builderError) {
+                              setBuilderError('')
+                            }
+                          }}
+                          value={builderChartType}
+                        >
+                          {builderChartTypeOptions.map((chartTypeOption) => (
+                            <option key={chartTypeOption} value={chartTypeOption}>
+                              {humanizeVizType(chartTypeOption)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                          Configure slots
+                        </p>
+                        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+                          <luzmo-item-slot-picker-panel
+                            key={builderSlotPanelKey}
+                            ref={slotPickerPanelRef}
+                          />
+                        </div>
+                      </div>
+
+                      {builderError ? (
+                        <p className="mt-2 text-sm font-medium text-red-600">{builderError}</p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                          AI chart assistant
+                        </p>
+                        <div className="mt-3 max-h-44 space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3">
+                          {iqChatMessages.length === 0 ? (
+                            <p className="text-sm text-slate-500">
+                              Ask for a chart using your selected data connection.
+                            </p>
+                          ) : null}
+                          {iqChatMessages.map((message, index) => (
+                            <div
+                              key={`iq-msg-${message.role}-${index}`}
+                              className={`rounded-lg px-3 py-2 text-sm ${
+                                message.role === 'user'
+                                  ? 'ml-6 bg-teal-50 text-teal-900'
+                                  : 'mr-6 bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              {message.text}
+                            </div>
+                          ))}
+                        </div>
+                        <form
+                          className="mt-3"
+                          onSubmit={(event) => {
+                            event.preventDefault()
+                            void handleGenerateIqChart()
+                          }}
+                        >
+                          <textarea
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
+                            onChange={(event) => setIqPrompt(event.target.value)}
+                            placeholder="Example: Build a bar chart of Scope 1 emissions by country, grouped by industry."
+                            ref={iqPromptTextareaRef}
+                            rows={3}
+                            value={iqPrompt}
+                          />
+                        </form>
+                        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+                          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                            Available columns in {aiPromptDatasetName}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Click a column to add it to your prompt.
+                          </p>
+                          {aiColumnsLoading ? (
+                            <p className="mt-2 text-sm text-slate-500">Loading columns...</p>
+                          ) : aiAvailableColumns.length > 0 ? (
+                            <div className="mt-2 flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1">
+                              {aiAvailableColumns.map((column) => {
+                                const columnTypeKey = getColumnTypeKey(column)
+                                const badge = COLUMN_TYPE_BADGES[columnTypeKey]
+                                const columnLabel = slotValueLabel(column)
+                                const columnId =
+                                  typeof column.columnId === 'string'
+                                    ? column.columnId
+                                    : columnLabel
+                                return (
+                                  <button
+                                    key={`${aiPromptDatasetId}-${columnId}`}
+                                    className="inline-flex max-w-full items-center gap-2 rounded-full border border-teal-200 bg-teal-50/60 px-2.5 py-1 text-sm text-teal-800 transition hover:border-teal-300 hover:bg-teal-100"
+                                    onClick={() => handleAppendAiColumnToPrompt(column)}
+                                    title={`${badge.label} column`}
+                                    type="button"
+                                  >
+                                    <span
+                                      className={`inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border px-1 text-[0.68rem] font-semibold leading-none ${badge.className}`}
+                                    >
+                                      {renderColumnTypeIcon(columnTypeKey)}
+                                    </span>
+                                    <span className="max-w-[12rem] truncate text-left">
+                                      {columnLabel}
+                                    </span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-sm text-slate-500">
+                              {aiColumnsError ||
+                                'No dataset columns are available for quick prompt insertion.'}
+                            </p>
+                          )}
+                        </div>
+                        {iqError ? (
+                          <p className="mt-2 text-sm font-medium text-red-600">{iqError}</p>
+                        ) : null}
+                        {iqSaveMessage ? (
+                          <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+                            {iqSaveMessage}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {iqGeneratedCard ? (
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                            Generated chart preview
+                          </p>
+                          <div className="mt-3">
+                            <FlexChartCard card={iqGeneratedCard} theme={PIVOT_THEME} />
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+              {aiModalStage === 'create' ? (
+                <div className="mt-4 flex shrink-0 justify-center gap-3 border-t border-slate-200 pt-3">
+                  <button
+                    className="swipe-button swipe-button-neutral"
+                    onClick={() => {
+                      setShowAiModal(false)
+                      handleGoToActiveDashboard()
+                    }}
+                    type="button"
+                  >
+                    Go directly to dashboard
+                  </button>
+                  {createMatchMode === 'builder' ? (
+                    <button
+                      className="swipe-button swipe-button-match"
+                      onClick={handleCreateAiCard}
+                      type="button"
+                    >
+                      Create Data Profile
+                    </button>
+                  ) : (
+                    <button
+                      className="swipe-button swipe-button-match"
+                      disabled={iqLoading}
+                      onClick={() => {
+                        void handleGenerateIqChart()
+                      }}
+                      type="button"
+                    >
+                      {iqLoading ? 'Generating chart...' : 'Create Data Profile'}
+                    </button>
+                  )}
                 </div>
-              </div>
-
-              {builderError ? (
-                <p className="mt-2 text-sm font-medium text-red-600">{builderError}</p>
               ) : null}
             </div>
-
-            <div className="mt-4 flex shrink-0 justify-end gap-3 border-t border-slate-200 pt-3">
-              <button
-                className="swipe-button swipe-button-pass"
-                onClick={() => {
-                  setShowAiModal(false)
-                  handleGoToActiveDashboard()
-                }}
-                type="button"
-              >
-                Go to dashboard
-              </button>
-              <button
-                className="swipe-button swipe-button-match"
-                onClick={handleCreateAiCard}
-                type="button"
-              >
-                Add to swipe stack
-              </button>
-            </div>
-          </div>
+              </div>
         </div>
       ) : null}
 
