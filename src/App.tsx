@@ -230,8 +230,8 @@ const AI_SUMMARY_UNSUPPORTED_TYPE_KEYWORDS = [
 const DASHBOARD_EDIT_ITEM_ACTIONS_MENU = [
   { type: 'group' as const, actions: ['item-options', 'delete'] },
 ]
-const SAVED_CONNECTIONS_STORAGE_KEY = 'pivot.saved-connections.v1'
-const ACTIVE_CONNECTION_STORAGE_KEY = 'pivot.active-connection-id.v1'
+const SAVED_CONNECTIONS_STORAGE_KEY = 'pivot-copy.saved-connections.v1'
+const ACTIVE_CONNECTION_STORAGE_KEY = 'pivot-copy.active-connection-id.v1'
 const SWIPE_FEEDBACK_VISIBLE_MS = 1150
 const SWIPE_FEEDBACK_CLEAR_DELAY_MS = 1450
 const SWIPE_CARD_EXIT_MS = 220
@@ -2369,6 +2369,9 @@ function FlexChartCard({
     viz.style.width = '100%'
     viz.style.height = '100%'
     viz.style.display = 'block'
+    // Swipe is the primary interaction in discover mode, so prevent the embedded
+    // chart from capturing pointer/touch gestures and blocking card dragging.
+    viz.style.pointerEvents = 'none'
 
     viz.authKey = LUZMO_AUTH_KEY
     viz.authToken = LUZMO_AUTH_TOKEN
@@ -2555,19 +2558,47 @@ function SwipeBucketButton({
   const label = bucket === 'matches' ? 'Matches' : 'Skips'
   const recentItems = useMemo(() => [...items].reverse(), [items])
   const previewItems = recentItems.slice(0, 4)
+  const closeTimeoutRef = useRef<number | null>(null)
+
+  const clearCloseTimeout = useCallback(() => {
+    if (closeTimeoutRef.current !== null && typeof window !== 'undefined') {
+      window.clearTimeout(closeTimeoutRef.current)
+      closeTimeoutRef.current = null
+    }
+  }, [])
+
+  const handleOpen = useCallback(() => {
+    clearCloseTimeout()
+    onOpen()
+  }, [clearCloseTimeout, onOpen])
+
+  const handleCloseWithDelay = useCallback(() => {
+    clearCloseTimeout()
+    if (typeof window === 'undefined') {
+      onClose()
+      return
+    }
+
+    closeTimeoutRef.current = window.setTimeout(() => {
+      onClose()
+      closeTimeoutRef.current = null
+    }, 180)
+  }, [clearCloseTimeout, onClose])
+
+  useEffect(() => clearCloseTimeout, [clearCloseTimeout])
 
   return (
     <div
       className="relative"
-      onMouseEnter={onOpen}
-      onMouseLeave={onClose}
-      onFocus={onOpen}
+      onMouseEnter={handleOpen}
+      onMouseLeave={handleCloseWithDelay}
+      onFocus={handleOpen}
       onBlur={(event) => {
         const next = event.relatedTarget as Node | null
         if (event.currentTarget.contains(next)) {
           return
         }
-        onClose()
+        handleCloseWithDelay()
       }}
     >
       <button
@@ -2590,6 +2621,16 @@ function SwipeBucketButton({
             bucket === 'matches' ? 'left-0' : 'right-0'
           }`}
           id={`${bucket}-popover`}
+          onMouseEnter={handleOpen}
+          onMouseLeave={handleCloseWithDelay}
+          onFocus={handleOpen}
+          onBlur={(event) => {
+            const next = event.relatedTarget as Node | null
+            if (event.currentTarget.contains(next)) {
+              return
+            }
+            handleCloseWithDelay()
+          }}
           role="dialog"
         >
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
@@ -2616,7 +2657,10 @@ function SwipeBucketButton({
                     {bucket === 'skips' && onMoveBackItem ? (
                       <button
                         className="shrink-0 rounded-full border border-teal-200 bg-teal-50 px-2 py-1 text-xs font-semibold text-teal-800 hover:bg-teal-100"
-                        onClick={() => onMoveBackItem(card.id)}
+                        onClick={() => {
+                          clearCloseTimeout()
+                          onMoveBackItem(card.id)
+                        }}
                         type="button"
                       >
                         Move back
@@ -2708,6 +2752,7 @@ function App() {
   const swipeFeedbackClearTimerRef = useRef<number | null>(null)
   const swipeAdvanceTimerRef = useRef<number | null>(null)
   const swipeExitTimerRef = useRef<number | null>(null)
+  const swipeLockFailSafeTimerRef = useRef<number | null>(null)
   const swipeResolutionLockRef = useRef(false)
   const iqRequestAbortRef = useRef<AbortController | null>(null)
   const iqPromptTextareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -3070,8 +3115,8 @@ function App() {
   const stageOrder: Screen[] = ['profile', 'discover', 'dashboard']
   const currentStageIndex = stageOrder.indexOf(screen)
   const canOpenDiscoverTab =
+    screen !== 'profile' &&
     !(
-      screen === 'profile' &&
       potentialMatches.length === 0 &&
       !potentialMatchesLoading
     )
@@ -3314,6 +3359,10 @@ function App() {
       if (swipeExitTimerRef.current !== null) {
         window.clearTimeout(swipeExitTimerRef.current)
         swipeExitTimerRef.current = null
+      }
+      if (swipeLockFailSafeTimerRef.current !== null) {
+        window.clearTimeout(swipeLockFailSafeTimerRef.current)
+        swipeLockFailSafeTimerRef.current = null
       }
     }
   }, [])
@@ -4840,9 +4889,17 @@ function App() {
       return
     }
 
-    const confirmed = window.confirm(
-      `Delete "${getConnectionDisplayName(connection)}"? This removes only this saved connection.`,
-    )
+    let confirmed = true
+    try {
+      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+        confirmed = window.confirm(
+          `Delete "${getConnectionDisplayName(connection)}"? This removes only this saved connection.`,
+        )
+      }
+    } catch {
+      confirmed = true
+    }
+
     if (!confirmed) {
       return
     }
@@ -4875,6 +4932,13 @@ function App() {
     }
 
     swipeResolutionLockRef.current = true
+    if (swipeLockFailSafeTimerRef.current !== null) {
+      window.clearTimeout(swipeLockFailSafeTimerRef.current)
+    }
+    swipeLockFailSafeTimerRef.current = window.setTimeout(() => {
+      swipeResolutionLockRef.current = false
+      swipeLockFailSafeTimerRef.current = null
+    }, 2000)
     setOpenBucket(null)
     const isFinalCard = currentIndex >= potentialMatches.length - 1
     const isFinalRightSwipe = direction === 'right' && isFinalCard
@@ -4898,6 +4962,10 @@ function App() {
       setCurrentIndex((previous) => previous + 1)
       setSwipeInProgress(null)
       swipeResolutionLockRef.current = false
+      if (swipeLockFailSafeTimerRef.current !== null) {
+        window.clearTimeout(swipeLockFailSafeTimerRef.current)
+        swipeLockFailSafeTimerRef.current = null
+      }
     }
 
     if (swipeAdvanceTimerRef.current !== null) {
@@ -5076,7 +5144,7 @@ function App() {
       />
 
       <div className="mx-auto w-full max-w-6xl rounded-3xl border border-white/70 bg-white/85 p-4 shadow-xl backdrop-blur md:p-8">
-        <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-teal-700 md:text-4xl">
               Pivot: The Dat<span className="inline-block align-[0.2em] text-[0.45em]">a</span>ing App
@@ -5383,7 +5451,7 @@ function App() {
                             handleSwipe('left')
                           }
                         }}
-                        style={{ zIndex: 50 - index }}
+                        style={{ zIndex: 50 - index, touchAction: 'pan-y' }}
                         transition={
                           isSwipingOut
                             ? { duration: 0.22, ease: 'easeOut' }
@@ -5415,7 +5483,11 @@ function App() {
                       count={matches.length}
                       isOpen={openBucket === 'matches'}
                       items={matches}
-                      onClose={() => setOpenBucket(null)}
+                      onClose={() =>
+                        setOpenBucket((current) =>
+                          current === 'matches' ? null : current,
+                        )
+                      }
                       onOpen={() => setOpenBucket('matches')}
                     />
                     <SwipeBucketButton
@@ -5423,7 +5495,11 @@ function App() {
                       count={skippedCards.length}
                       isOpen={openBucket === 'skips'}
                       items={skippedCards}
-                      onClose={() => setOpenBucket(null)}
+                      onClose={() =>
+                        setOpenBucket((current) =>
+                          current === 'skips' ? null : current,
+                        )
+                      }
                       onMoveBackItem={handleMoveSkippedItemBackToStack}
                       onOpen={() => setOpenBucket('skips')}
                     />
@@ -5513,7 +5589,7 @@ function App() {
               </div>
             ) : (
               <div className="relative grid-shell rounded-2xl p-3 md:p-4">
-                <luzmo-grid
+                <luzmo-item-grid
                   ref={gridRef}
                   className="block min-h-[560px] w-full rounded-xl"
                 />
@@ -5636,12 +5712,15 @@ function App() {
                             </button>
                             <button
                               aria-label={`Delete ${connectionDisplayName}`}
-                              className="h-7 w-7 rounded-full border border-rose-200 bg-white text-sm font-semibold leading-none text-rose-700 transition hover:bg-rose-50"
-                              onClick={() => handleDeleteConnection(connection.id)}
+                              className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleDeleteConnection(connection.id)
+                              }}
                               title="Delete connection"
                               type="button"
                             >
-                              ×
+                              Delete
                             </button>
                           </div>
                         </div>
@@ -6009,6 +6088,8 @@ function App() {
 }
 
 export default App
+
+
 
 
 
