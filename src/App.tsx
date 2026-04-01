@@ -1,4 +1,4 @@
-﻿import { motion } from 'framer-motion'
+﻿import { motion, useDragControls } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AccessibleDashboard } from '@luzmo/embed'
@@ -1803,7 +1803,7 @@ async function fetchDashboardPotentialMatches(
       return {
         id: `${dashboardId}-${item.id ?? index}`,
         renderMode: 'flex-config',
-        useItemReference: true,
+        useItemReference: false,
         sourceDashboardId: dashboardId,
         sourceItemId: item.id ?? `${dashboardId}-item-${index}`,
         title,
@@ -2369,35 +2369,38 @@ function FlexChartCard({
     viz.style.width = '100%'
     viz.style.height = '100%'
     viz.style.display = 'block'
-    // Swipe is the primary interaction in discover mode, so prevent the embedded
-    // chart from capturing pointer/touch gestures and blocking card dragging.
-    viz.style.pointerEvents = 'none'
+    // Keep chart interactions enabled so hover tooltips remain available.
+    viz.style.pointerEvents = 'auto'
 
     viz.authKey = LUZMO_AUTH_KEY
     viz.authToken = LUZMO_AUTH_TOKEN
     viz.appServer = LUZMO_APP_SERVER
     viz.apiHost = LUZMO_API_HOST
-    viz.type = card.vizType
-    viz.options = vizOptions
-    viz.slots = card.rawSlots ?? []
-    const useItemReference =
-      card.useItemReference ??
-      !card.sourceItemId.toLowerCase().startsWith('ai-')
-    if (useItemReference && card.sourceDashboardId) {
+    const sourceItemId =
+      typeof card.sourceItemId === 'string' ? card.sourceItemId : ''
+    const useItemReference = card.useItemReference ?? false
+    const shouldUseReferenceOnly = useItemReference && Boolean(card.sourceDashboardId) && Boolean(sourceItemId)
+
+    if (shouldUseReferenceOnly) {
       viz.dashboardId = card.sourceDashboardId
-      viz.itemId = card.sourceItemId
+      viz.itemId = sourceItemId
+    } else {
+      viz.type = card.vizType
+      viz.options = vizOptions
+      viz.slots = card.rawSlots ?? []
     }
 
     viz.setAttribute('authKey', LUZMO_AUTH_KEY)
     viz.setAttribute('authToken', LUZMO_AUTH_TOKEN)
     viz.setAttribute('appServer', LUZMO_APP_SERVER)
     viz.setAttribute('apiHost', LUZMO_API_HOST)
-    viz.setAttribute('type', card.vizType)
-    viz.setAttribute('options', JSON.stringify(vizOptions))
-    viz.setAttribute('slots', JSON.stringify(card.rawSlots ?? []))
-    if (useItemReference && card.sourceDashboardId) {
-      viz.setAttribute('dashboardId', card.sourceDashboardId)
-      viz.setAttribute('itemId', card.sourceItemId)
+    if (shouldUseReferenceOnly) {
+      viz.setAttribute('dashboardId', card.sourceDashboardId as string)
+      viz.setAttribute('itemId', sourceItemId)
+    } else {
+      viz.setAttribute('type', card.vizType)
+      viz.setAttribute('options', JSON.stringify(vizOptions))
+      viz.setAttribute('slots', JSON.stringify(card.rawSlots ?? []))
     }
 
     mount.replaceChildren(viz)
@@ -2824,6 +2827,7 @@ function App() {
   const [discoverStackHeight, setDiscoverStackHeight] = useState(760)
   const [swipeFeedback, setSwipeFeedback] = useState<SwipeFeedback>(null)
   const [showSwipeFeedback, setShowSwipeFeedback] = useState(false)
+  const discoverDragControls = useDragControls()
   const [swipeInProgress, setSwipeInProgress] = useState<{
     cardId: string
     direction: SwipeDirection
@@ -3140,9 +3144,13 @@ function App() {
     const updateHeight = () => {
       const measuredHeight = node.offsetHeight
       const nextHeight = Math.max(760, Math.ceil(measuredHeight + 36))
-      setDiscoverStackHeight((previous) =>
-        Math.abs(previous - nextHeight) > 12 ? nextHeight : previous,
-      )
+      setDiscoverStackHeight((previous) => {
+        // Avoid shrinking between swipes, which can force-scroll users upward.
+        if (nextHeight <= previous) {
+          return previous
+        }
+        return Math.abs(previous - nextHeight) > 12 ? nextHeight : previous
+      })
     }
 
     updateHeight()
@@ -3711,6 +3719,12 @@ function App() {
       setShowAiModal(false)
     }
   }, [screen, showAiModal])
+
+  useEffect(() => {
+    if (screen !== 'discover') {
+      setDiscoverStackHeight(760)
+    }
+  }, [screen])
 
   useEffect(() => {
     if (showAiModal) {
@@ -5438,8 +5452,16 @@ function App() {
                           isTop ? 'pointer-events-auto' : 'pointer-events-none'
                         }`}
                         drag={isTop && !isSwipingOut ? 'x' : false}
+                        dragControls={discoverDragControls}
+                        dragListener={false}
                         dragElastic={0.8}
                         dragSnapToOrigin={!isSwipingOut}
+                        onPointerDownCapture={(event) => {
+                          if (!isTop || isSwipingOut) {
+                            return
+                          }
+                          discoverDragControls.start(event)
+                        }}
                         onDragEnd={(_, info) => {
                           if (!isTop) {
                             return
