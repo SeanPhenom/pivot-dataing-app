@@ -1,0 +1,1 @@
+var e={name:"Stripdiagram",groups:{general:{label:"Algemeen"}},options:{"display.title":{label:"Titel"},"display.searchOption":{label:"Zoeken"},"display.percentile":{label:"Percentiel in label"}}};export{e as default};

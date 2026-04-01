@@ -1,0 +1,1 @@
+var e=[{name:"y-axis",rotate:!0,label:"Y-Axis",type:"categorical",options:{areDatetimeOptionsEnabled:!0},isRequired:!0},{name:"measure",rotate:!1,label:"Measure",type:"numeric",isRequired:!1,canAcceptFormula:!0},{name:"x-axis",rotate:!1,label:"X-Axis",type:"categorical",options:{areDatetimeOptionsEnabled:!0},isRequired:!0}];export{e as heatTableSlotsConfig};

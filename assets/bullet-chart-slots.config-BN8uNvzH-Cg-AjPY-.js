@@ -1,0 +1,1 @@
+var e=[{name:"category",rotate:!0,label:"Category",options:{areDatetimeOptionsEnabled:!0},type:"categorical"},{name:"measure",rotate:!1,label:"Measure",type:"numeric",canAcceptFormula:!0},{name:"target",rotate:!1,label:"Target",type:"numeric",canAcceptFormula:!0}];export{e as bulletChartSlotsConfig};

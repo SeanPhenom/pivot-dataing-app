@@ -1,0 +1,1 @@
+var e={name:"Graphique OHLC",groups:{general:{label:"Général"}},options:{"display.title":{label:"Titre"},"ohlc.colors.lower":{label:"Baisse",description:"Couleur pour les valeurs en baisse"},"ohlc.colors.higher":{label:"Hausse",description:"Couleur pour les valeurs en hausse"},"ohlc.strokeWidth":{label:"Épaisseur de ligne"}}};export{e as default};

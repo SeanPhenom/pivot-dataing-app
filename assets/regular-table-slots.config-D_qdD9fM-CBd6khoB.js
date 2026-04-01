@@ -1,0 +1,1 @@
+var e=[{name:"columns",rotate:!1,type:"mixed",label:"Columns",options:{isAggregationDisabled:!0,areDatetimeOptionsEnabled:!0},canAcceptMultipleDataFields:!0,isRequired:!0}];export{e as regularTableSlotsConfig};

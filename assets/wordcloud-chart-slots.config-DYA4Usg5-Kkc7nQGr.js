@@ -1,0 +1,1 @@
+var e=[{name:"measure",rotate:!1,label:"Measure",type:"numeric",canAcceptFormula:!0},{name:"category",rotate:!1,label:"Category",type:"categorical",isRequired:!0},{name:"color",rotate:!0,label:"Color",type:"categorical"}];export{e as wordcloudChartSlotsConfig};

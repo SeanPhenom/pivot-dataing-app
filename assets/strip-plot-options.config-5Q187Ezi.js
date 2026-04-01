@@ -1,0 +1,1 @@
+const e=[{key:"general",type:"group",open:!0,children:[{key:"display.title",control:{type:"switch",default:!1}},{key:"display.searchOption",control:{type:"switch",label:"Search",default:!0}},{key:"display.percentile",control:{type:"switch",label:"Percentile in label",default:!0}}]}];export{e as default};

@@ -1,0 +1,1 @@
+var e=[{name:"geo",rotate:!1,label:"Geography",type:"categorical",isRequired:!0,acceptableDataFieldTypes:["spatial"]},{name:"measure",rotate:!1,label:"Measure",type:"numeric",canAcceptFormula:!0}];export{e as markerMapSlotsConfig};

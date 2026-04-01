@@ -1,0 +1,1 @@
+const e=[{name:"color",rotate:!0,label:"Color",type:"categorical",acceptableDataFieldTypes:["hierarchy","array[hierarchy]","datetime","array[datetime]"]},{name:"coordinates",rotate:!1,type:"mixed",label:"Coordinates",options:{isAggregationDisabled:!0,isBinningDisabled:!0},isRequired:!0,canAcceptMultipleDataFields:!0}];export{e as parallelCoordinatesPlotSlotsConfig};

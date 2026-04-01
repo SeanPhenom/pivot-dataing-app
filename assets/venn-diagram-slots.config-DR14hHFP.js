@@ -1,0 +1,1 @@
+const e=[{name:"category",rotate:!1,label:"Circles",type:"categorical",isRequired:!0},{name:"identifier",rotate:!0,label:"Identifier",type:"categorical",isRequired:!0},{name:"measure",rotate:!1,label:"Measure",type:"numeric",isRequired:!1,canAcceptFormula:!0}];export{e as vennDiagramSlotsConfig};

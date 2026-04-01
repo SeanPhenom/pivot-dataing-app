@@ -1,0 +1,1 @@
+var l={name:"Filtro deslizante",groups:{general:{label:"General"},padding:{label:"Espaciado"}},options:{"display.title":{label:"Título"},color:{label:"Color del deslizador"},"padding.left":{label:"Espaciado izquierdo"},"padding.right":{label:"Espaciado derecho"}}};export{l as default};

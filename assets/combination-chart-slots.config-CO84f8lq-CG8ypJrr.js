@@ -1,0 +1,1 @@
+var e=[{name:"measure",rotate:!1,label:"Measures",type:"numeric",options:{isCumulativeSumEnabled:!0},canAcceptMultipleDataFields:!0,canAcceptFormula:!0},{name:"x-axis",rotate:!1,label:"X-Axis",type:"mixed",options:{isAggregationDisabled:!0,isBinningDisabled:!0,areDatetimeOptionsEnabled:!0},isRequired:!0}];export{e as combinationChartSlotsConfig};

@@ -1,0 +1,1 @@
+var e={name:"Graphique à cercles imbriqués",groups:{general:{label:"Général"}},options:{"display.title":{label:"Titre"},"display.labels":{label:"Afficher les étiquettes"},"circles.colorByDepth":{label:"Couleur par niveau de profondeur"}}};export{e as default};

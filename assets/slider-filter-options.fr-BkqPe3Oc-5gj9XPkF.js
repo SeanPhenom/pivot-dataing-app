@@ -1,0 +1,1 @@
+var e={name:"Filtre curseur",groups:{general:{label:"Général"},padding:{label:"Espacement"}},options:{"display.title":{label:"Titre"},color:{label:"Couleur du curseur"},"padding.left":{label:"Espacement gauche"},"padding.right":{label:"Espacement droite"}}};export{e as default};

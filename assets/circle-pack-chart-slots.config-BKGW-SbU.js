@@ -1,0 +1,1 @@
+const e=[{name:"measure",rotate:!1,label:"Measure",type:"numeric",canAcceptFormula:!0},{name:"levels",rotate:!1,label:"Levels",type:"categorical",canAcceptMultipleDataFields:!0,options:{areDatetimeOptionsEnabled:!0},isRequired:!0}];export{e as circlePackChartSlotsConfig};

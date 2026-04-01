@@ -1,0 +1,1 @@
+const e=[{key:"general",type:"group",open:!0,children:[{key:"display.title",control:{type:"switch",label:"Title",default:!0}},{key:"display.labels",control:{type:"switch",label:"Show labels",default:!0}},{key:"circles.colorByDepth",control:{type:"switch",label:"Color by level depth",default:!0}}]}];export{e as default};

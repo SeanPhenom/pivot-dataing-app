@@ -1,0 +1,1 @@
+var l={name:"Slider filter",groups:{general:{label:"General"},padding:{label:"Padding"}},options:{"display.title":{label:"Title"},color:{label:"Slider color"},"padding.left":{label:"Padding left"},"padding.right":{label:"Padding right"}}};export{l as default};

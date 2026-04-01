@@ -1,0 +1,1 @@
+const e=[{name:"measure",rotate:!1,label:"Measure",type:"numeric",canAcceptMultipleDataFields:!0,keepOnlyFirstWhenOtherSlotFilled:["category"],canAcceptFormula:!0},{name:"category",rotate:!1,label:"Category",type:"categorical",options:{areDatetimeOptionsEnabled:!0},clearWhenOtherSlotHasMultipleItems:["measure"]}];export{e as donutChartSlotsConfig};

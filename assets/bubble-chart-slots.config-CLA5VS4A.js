@@ -1,0 +1,1 @@
+const e=[{name:"measure",rotate:!1,label:"Measure",type:"numeric",canAcceptFormula:!0},{name:"category",rotate:!1,label:"Category",options:{areDatetimeOptionsEnabled:!0},type:"categorical",isRequired:!0},{name:"color",label:"Color",options:{areDatetimeOptionsEnabled:!0},rotate:!0,type:"categorical"}];export{e as bubbleChartSlotsConfig};

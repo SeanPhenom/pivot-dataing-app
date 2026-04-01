@@ -1,0 +1,1 @@
+var e={name:"Graphique à puces",groups:{general:{label:"Général"}},options:{"display.title":{label:"Titre"},"display.ranges":{label:"Plages"},"display.bulletSubtitles":{label:"Sous-titre de puce"},color:{label:"Couleur de puce"},"sort.direction":{label:"Ordre des puces",enum:{asc:"Croissant",desc:"Décroissant"}}}};export{e as default};

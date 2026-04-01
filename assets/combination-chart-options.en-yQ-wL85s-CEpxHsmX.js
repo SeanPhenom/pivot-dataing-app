@@ -1,0 +1,1 @@
+var e={name:"Combination chart",groups:{general:{label:"General"},order:{label:"Order & Limit"}},options:{"display.title":{label:"Title"},"display.legend":{label:"Legend"},"ranking.active":{label:"Limit to"},"ranking.direction":{label:"Direction",enum:{top:"Top",bottom:"Bottom"}},"ranking.number":{label:"Number"},"limit.number":{label:"Limit"}}};export{e as default};

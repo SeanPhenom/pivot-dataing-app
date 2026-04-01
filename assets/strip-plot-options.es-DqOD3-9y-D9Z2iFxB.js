@@ -1,0 +1,1 @@
+var e={name:"Gráfico de tiras",groups:{general:{label:"General"}},options:{"display.title":{label:"Título"},"display.searchOption":{label:"Búsqueda"},"display.percentile":{label:"Percentil en etiqueta"}}};export{e as default};

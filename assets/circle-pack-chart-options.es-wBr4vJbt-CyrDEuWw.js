@@ -1,0 +1,1 @@
+var e={name:"Gráfico de círculos empaquetados",groups:{general:{label:"General"}},options:{"display.title":{label:"Título"},"display.labels":{label:"Mostrar etiquetas"},"circles.colorByDepth":{label:"Color por nivel de profundidad"}}};export{e as default};

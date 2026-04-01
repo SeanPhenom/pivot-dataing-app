@@ -1,0 +1,1 @@
+var e={name:"Gráfico de bala",groups:{general:{label:"General"}},options:{"display.title":{label:"Título"},"display.ranges":{label:"Rangos"},"display.bulletSubtitles":{label:"Subtítulo de bala"},color:{label:"Color de bala"},"sort.direction":{label:"Orden de balas",enum:{asc:"Ascendente",desc:"Descendente"}}}};export{e as default};

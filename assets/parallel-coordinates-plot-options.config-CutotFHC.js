@@ -1,0 +1,1 @@
+const e=[{key:"general",type:"group",open:!0,children:[{key:"display.title",control:{type:"switch",default:!0}},{key:"axes.alwaysShow",control:{type:"switch",label:"Show all axes",default:!1}}]}];export{e as default};

@@ -1,0 +1,1 @@
+var e={name:"Graphique combiné",groups:{general:{label:"Général"},order:{label:"Ordre & Limite"}},options:{"display.title":{label:"Titre"},"display.legend":{label:"Légende"},"ranking.active":{label:"Limiter à"},"ranking.direction":{label:"Direction",enum:{top:"Haut",bottom:"Bas"}},"ranking.number":{label:"Nombre"},"limit.number":{label:"Limite"}}};export{e as default};

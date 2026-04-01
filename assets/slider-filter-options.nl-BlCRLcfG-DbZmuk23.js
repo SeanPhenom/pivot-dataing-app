@@ -1,0 +1,1 @@
+var l={name:"Schuifregelaar filter",groups:{general:{label:"Algemeen"},padding:{label:"Opvulling"}},options:{"display.title":{label:"Titel"},color:{label:"Schuifregelaar kleur"},"padding.left":{label:"Linker opvulling"},"padding.right":{label:"Rechter opvulling"}}};export{l as default};

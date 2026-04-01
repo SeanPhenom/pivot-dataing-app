@@ -1,0 +1,1 @@
+var e=[{name:"target",rotate:!1,label:"Target",type:"numeric",canAcceptFormula:!0,canAcceptDataIndependentOf:["measure"]},{name:"measure",rotate:!1,label:"Measure",type:"numeric",isRequired:!0,canAcceptFormula:!0,canAcceptDataIndependentOf:["target"]}];export{e as circularGaugeSlotsConfig};

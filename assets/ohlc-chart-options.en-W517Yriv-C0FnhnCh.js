@@ -1,0 +1,1 @@
+var e={name:"OHLC chart",groups:{general:{label:"General"}},options:{"display.title":{label:"Title"},"ohlc.colors.lower":{label:"Lower",description:"Color for decreasing values"},"ohlc.colors.higher":{label:"Higher",description:"Color for increasing values"},"ohlc.strokeWidth":{label:"Stroke width"}}};export{e as default};

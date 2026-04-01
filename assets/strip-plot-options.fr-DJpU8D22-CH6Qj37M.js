@@ -1,0 +1,1 @@
+var e={name:"Graphique en bandes",groups:{general:{label:"Général"}},options:{"display.title":{label:"Titre"},"display.searchOption":{label:"Recherche"},"display.percentile":{label:"Percentile dans l'étiquette"}}};export{e as default};

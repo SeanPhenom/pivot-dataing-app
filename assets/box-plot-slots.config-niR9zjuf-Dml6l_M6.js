@@ -1,0 +1,1 @@
+var e=[{name:"measure",rotate:!1,label:"Measure",options:{isAggregationDisabled:!0},acceptableDataFieldTypes:["numeric","array[numeric]"],type:"numeric",isRequired:!0,canAcceptFormula:!0},{name:"category",rotate:!1,label:"Category",options:{areDatetimeOptionsEnabled:!0},type:"categorical",isRequired:!0}];export{e as boxPlotSlotsConfig};

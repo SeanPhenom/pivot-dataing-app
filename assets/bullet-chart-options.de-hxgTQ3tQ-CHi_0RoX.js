@@ -1,0 +1,1 @@
+var e={name:"Bullet-Chart",groups:{general:{label:"Allgemein"}},options:{"display.title":{label:"Titel"},"display.ranges":{label:"Bereiche"},"display.bulletSubtitles":{label:"Bullet-Untertitel"},color:{label:"Bullet-Farbe"},"sort.direction":{label:"Bullet-Reihenfolge",enum:{asc:"Aufsteigend",desc:"Absteigend"}}}};export{e as default};

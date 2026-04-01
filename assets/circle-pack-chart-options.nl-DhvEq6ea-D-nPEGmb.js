@@ -1,0 +1,1 @@
+var e={name:"Cirkeldiagram",groups:{general:{label:"Algemeen"}},options:{"display.title":{label:"Titel"},"display.labels":{label:"Labels weergeven"},"circles.colorByDepth":{label:"Kleur per niveau"}}};export{e as default};

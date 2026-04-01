@@ -1,0 +1,1 @@
+var e={name:"OHLC-Diagramm",groups:{general:{label:"Allgemein"}},options:{"display.title":{label:"Titel"},"ohlc.colors.lower":{label:"Fallend",description:"Farbe für fallende Werte"},"ohlc.colors.higher":{label:"Steigend",description:"Farbe für steigende Werte"},"ohlc.strokeWidth":{label:"Linienstärke"}}};export{e as default};

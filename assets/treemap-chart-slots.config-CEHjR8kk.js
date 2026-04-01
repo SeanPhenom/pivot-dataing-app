@@ -1,0 +1,1 @@
+const e=[{name:"measure",rotate:!1,label:"Measure",type:"numeric",canAcceptFormula:!0},{name:"category",rotate:!1,label:"Category",type:"categorical",options:{areDatetimeOptionsEnabled:!0},isRequired:!0},{name:"color",rotate:!0,label:"Color",options:{areDatetimeOptionsEnabled:!0},type:"categorical"}];export{e as treemapChartSlotsConfig};

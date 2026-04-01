@@ -1,0 +1,1 @@
+var e=[{name:"measure",rotate:!0,label:"Measure",type:"numeric",canAcceptMultipleDataFields:!0,canAcceptFormula:!0},{name:"y-axis",rotate:!1,label:"Category",options:{areDatetimeOptionsEnabled:!0},type:"categorical",isRequired:!0}];export{e as stripPlotSlotsConfig};

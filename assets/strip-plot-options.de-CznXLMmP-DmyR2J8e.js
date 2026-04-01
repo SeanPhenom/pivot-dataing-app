@@ -1,0 +1,1 @@
+var e={name:"Streifendiagramm",groups:{general:{label:"Allgemein"}},options:{"display.title":{label:"Titel"},"display.searchOption":{label:"Suche"},"display.percentile":{label:"Perzentil in Beschriftung"}}};export{e as default};

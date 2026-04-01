@@ -1,0 +1,1 @@
+var e={name:"Strip plot",groups:{general:{label:"General"}},options:{"display.title":{label:"Title"},"display.searchOption":{label:"Search"},"display.percentile":{label:"Percentile in label"}}};export{e as default};

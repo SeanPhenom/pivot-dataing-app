@@ -1,0 +1,1 @@
+var e={name:"Kreispackungsdiagramm",groups:{general:{label:"Allgemein"}},options:{"display.title":{label:"Titel"},"display.labels":{label:"Beschriftungen anzeigen"},"circles.colorByDepth":{label:"Farbe nach Hierarchieebene"}}};export{e as default};

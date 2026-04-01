@@ -1,0 +1,1 @@
+var e={name:"Schieberegler-Filter",groups:{general:{label:"Allgemein"},padding:{label:"Abstand"}},options:{"display.title":{label:"Titel"},color:{label:"Schiebereglerfarbe"},"padding.left":{label:"Linker Abstand"},"padding.right":{label:"Rechter Abstand"}}};export{e as default};

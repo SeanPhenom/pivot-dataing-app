@@ -1,0 +1,1 @@
+var e={name:"OHLC-grafiek",groups:{general:{label:"Algemeen"}},options:{"display.title":{label:"Titel"},"ohlc.colors.lower":{label:"Lager",description:"Kleur voor dalende waarden"},"ohlc.colors.higher":{label:"Hoger",description:"Kleur voor stijgende waarden"},"ohlc.strokeWidth":{label:"Lijndikte"}}};export{e as default};

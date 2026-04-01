@@ -1,0 +1,1 @@
+const e=[{name:"measure",rotate:!1,type:"numeric",label:"Measure",isRequired:!0,canAcceptFormula:!0},{name:"evolution",rotate:!1,type:"categorical",label:"Evolution",acceptableDataFieldTypes:["datetime","array[datetime]"]}];export{e as evolutionNumberSlotsConfig};

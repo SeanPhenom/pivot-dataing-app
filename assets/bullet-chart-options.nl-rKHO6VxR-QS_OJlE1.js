@@ -1,0 +1,1 @@
+var l={name:"Bulletgrafiek",groups:{general:{label:"Algemeen"}},options:{"display.title":{label:"Titel"},"display.ranges":{label:"Bereiken"},"display.bulletSubtitles":{label:"Bullet ondertitel"},color:{label:"Bulletkleur"},"sort.direction":{label:"Bulletvolgorde",enum:{asc:"Oplopend",desc:"Aflopend"}}}};export{l as default};

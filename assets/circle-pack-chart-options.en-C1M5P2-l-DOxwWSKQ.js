@@ -1,0 +1,1 @@
+var l={name:"Circle pack chart",groups:{general:{label:"General"}},options:{"display.title":{label:"Title"},"display.labels":{label:"Show labels"},"circles.colorByDepth":{label:"Color by level depth"}}};export{l as default};

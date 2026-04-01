@@ -1,0 +1,1 @@
+const e=[{name:"time",rotate:!1,type:"categorical",label:"Datetime",isRequired:!0,canAcceptMultipleDataFields:!0,acceptableDataFieldTypes:["datetime","array[datetime]"],canAcceptDataIndependentOf:["time"]}];export{e as dateComparisonFilterSlotsConfig};

@@ -1,0 +1,1 @@
+const e=[{name:"measure",rotate:!1,label:"Measure",type:"numeric",isRequired:!0,canAcceptFormula:!0,canAcceptDataIndependentOf:["target"]},{name:"target",rotate:!1,label:"Target",type:"numeric",canAcceptFormula:!0,canAcceptDataIndependentOf:["measure"]}];export{e as conditionalNumberSlotsConfig};

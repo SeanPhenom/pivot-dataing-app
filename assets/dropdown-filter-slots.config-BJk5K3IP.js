@@ -1,0 +1,1 @@
+const e=[{name:"dimension",rotate:!1,type:"mixed",options:{isAggregationDisabled:!0,isBinningDisabled:!0,areDatetimeOptionsEnabled:!0,showOnlyFirstSlotContentOptions:!0},label:"Dimension",isRequired:!0,canAcceptMultipleDataFields:!0,canAcceptDataIndependentOf:["dimension"]}];export{e as dropdownFilterSlotsConfig};
