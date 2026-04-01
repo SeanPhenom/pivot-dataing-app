@@ -3584,7 +3584,17 @@ function App() {
     panel.itemType = editingDashboardItem.type
     panel.options = editingDashboardItem.options
     panel.slots = editingDashboardItem.slots
-    panel.customOptionsConfiguration = itemEditorOptionsConfig
+    const hasCustomOptionsConfig =
+      Array.isArray(itemEditorOptionsConfig) &&
+      itemEditorOptionsConfig.length > 0
+    if (hasCustomOptionsConfig) {
+      panel.customOptionsConfiguration = itemEditorOptionsConfig
+    } else {
+      // Ensure we fall back to built-in item options config instead of a blank custom mode.
+      delete ((panel as unknown) as Record<string, unknown>)
+        .customOptionsConfiguration
+      panel.removeAttribute('custom-options-configuration')
+    }
     panel.apiUrl = LUZMO_API_HOST
     panel.authKey = LUZMO_AUTH_KEY
     panel.authToken = LUZMO_AUTH_TOKEN
