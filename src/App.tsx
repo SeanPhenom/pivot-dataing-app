@@ -3414,14 +3414,16 @@ function App() {
     }
 
     const handleGridChanged = (event: Event) => {
-      const detailItems = isRecord((event as CustomEvent).detail)
-        ? (event as CustomEvent).detail.items
-        : undefined
-      const candidateItems = Array.isArray(detailItems)
-        ? (detailItems as LuzmoGridItem[])
-        : Array.isArray(grid.items)
-          ? (grid.items as LuzmoGridItem[])
-          : []
+      const detail = (event as CustomEvent).detail
+      const detailUpdatedItems = isRecord(detail) ? detail.updatedItems : undefined
+      const detailItems = isRecord(detail) ? detail.items : undefined
+      const candidateItems = Array.isArray(detailUpdatedItems)
+        ? (detailUpdatedItems as LuzmoGridItem[])
+        : Array.isArray(detailItems)
+          ? (detailItems as LuzmoGridItem[])
+          : Array.isArray(grid.items)
+            ? (grid.items as LuzmoGridItem[])
+            : []
 
       if (candidateItems.length === 0) {
         return
@@ -3434,8 +3436,10 @@ function App() {
     }
 
     grid.addEventListener('luzmo-item-grid-changed', handleGridChanged)
+    grid.addEventListener('luzmo-item-grid-layout-changed', handleGridChanged)
     return () => {
       grid.removeEventListener('luzmo-item-grid-changed', handleGridChanged)
+      grid.removeEventListener('luzmo-item-grid-layout-changed', handleGridChanged)
     }
   }, [screen, matches])
 
@@ -3453,10 +3457,14 @@ function App() {
 
       const action =
         typeof detail.action === 'string' ? detail.action.trim().toLowerCase() : ''
+      const detailItem = isRecord(detail.item) ? detail.item : null
+
       if (action === 'delete') {
         const deletedId =
           typeof detail.deletedId === 'string' && detail.deletedId.trim().length > 0
             ? detail.deletedId
+            : typeof detailItem?.id === 'string' && detailItem.id.trim().length > 0
+              ? detailItem.id
             : typeof detail.id === 'string'
               ? detail.id
               : ''
@@ -3475,25 +3483,36 @@ function App() {
         return
       }
 
-      const itemId = typeof detail.id === 'string' ? detail.id : ''
+      const itemId =
+        typeof detailItem?.id === 'string' && detailItem.id.trim().length > 0
+          ? detailItem.id
+          : typeof detail.id === 'string'
+            ? detail.id
+            : ''
       if (!itemId) {
         return
       }
 
       const itemFromState = dashboardGridItems.find((item) => item.id === itemId)
       const itemType =
-        typeof detail.type === 'string'
+        typeof detailItem?.type === 'string'
+          ? detailItem.type
+          : typeof detail.type === 'string'
           ? detail.type
           : itemFromState?.type ?? ''
       if (!itemType) {
         return
       }
 
-      const itemOptions = isRecord(detail.options)
-        ? stripThemeFromOptions(detail.options as Record<string, unknown>)
+      const itemOptions = isRecord(detailItem?.options)
+        ? stripThemeFromOptions(detailItem.options as Record<string, unknown>)
+        : isRecord(detail.options)
+          ? stripThemeFromOptions(detail.options as Record<string, unknown>)
         : stripThemeFromOptions(itemFromState?.options ?? {})
-      const itemSlots = Array.isArray(detail.slots)
-        ? preserveRawSlots(detail.slots)
+      const itemSlots = Array.isArray(detailItem?.slots)
+        ? preserveRawSlots(detailItem.slots)
+        : Array.isArray(detail.slots)
+          ? preserveRawSlots(detail.slots)
         : itemFromState?.slots ?? []
 
       setEditingDashboardItem({
@@ -3590,9 +3609,8 @@ function App() {
     if (hasCustomOptionsConfig) {
       panel.customOptionsConfiguration = itemEditorOptionsConfig
     } else {
-      // Ensure we fall back to built-in item options config instead of a blank custom mode.
-      delete ((panel as unknown) as Record<string, unknown>)
-        .customOptionsConfiguration
+      // Explicitly clear custom mode so ACK falls back to built-in options.
+      panel.customOptionsConfiguration = undefined
       panel.removeAttribute('custom-options-configuration')
     }
     panel.apiUrl = LUZMO_API_HOST
