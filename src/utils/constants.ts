@@ -42,6 +42,9 @@ export const DASHBOARD_EDIT_ITEM_ACTIONS_MENU = [
 export const SAVED_CONNECTIONS_STORAGE_KEY = 'pivot-copy.saved-connections.v1'
 export const ACTIVE_CONNECTION_STORAGE_KEY = 'pivot-copy.active-connection-id.v1'
 
+export const AISUMMARY_BUCKET_SIZE = 10
+export const AISUMMARY_BUCKET_REFILL = 0.016
+
 export const SWIPE_FEEDBACK_VISIBLE_MS = 1150
 export const SWIPE_FEEDBACK_CLEAR_DELAY_MS = 1450
 export const SWIPE_CARD_EXIT_MS = 220

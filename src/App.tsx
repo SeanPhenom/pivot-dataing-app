@@ -33,6 +33,8 @@ import {
   PERSONAS,
   PIVOT_THEME,
   DASHBOARD_EDIT_ITEM_ACTIONS_MENU,
+  AISUMMARY_BUCKET_SIZE,
+  AISUMMARY_BUCKET_REFILL,
   SWIPE_FEEDBACK_VISIBLE_MS,
   SWIPE_FEEDBACK_CLEAR_DELAY_MS,
   SWIPE_CARD_EXIT_MS,
@@ -171,6 +173,8 @@ function App() {
   const summaryInFlightRef = useRef<Set<string>>(new Set())
   const summaryAbortRef = useRef<Map<string, AbortController>>(new Map())
   const summaryQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const summaryTokensRef = useRef(AISUMMARY_BUCKET_SIZE)
+  const summaryTokensUpdatedRef = useRef(Date.now())
   const topCardResizeObserverRef = useRef<ResizeObserver | null>(null)
   const topCardResizeRafRef = useRef<number | null>(null)
   const [discoverStackHeight, setDiscoverStackHeight] = useState(760)
@@ -580,6 +584,8 @@ function App() {
       summaryAbortRef.current.clear()
       summaryInFlightRef.current.clear()
       summaryQueueRef.current = Promise.resolve()
+      summaryTokensRef.current = AISUMMARY_BUCKET_SIZE
+      summaryTokensUpdatedRef.current = Date.now()
 
       setSelectedPersona(sanitizedConnection.persona)
       setRealismModeEnabled(Boolean(sanitizedConnection.realismMode))
@@ -1441,6 +1447,8 @@ function App() {
       summaryAbortRef.current.clear()
       summaryInFlightRef.current.clear()
       summaryQueueRef.current = Promise.resolve()
+      summaryTokensRef.current = AISUMMARY_BUCKET_SIZE
+      summaryTokensUpdatedRef.current = Date.now()
       if (topCardResizeRafRef.current !== null) {
         window.cancelAnimationFrame(topCardResizeRafRef.current)
         topCardResizeRafRef.current = null
@@ -1456,6 +1464,28 @@ function App() {
     },
     [],
   )
+
+  function getSummaryTokenWaitMs(): number {
+    const now = Date.now()
+    const elapsed = (now - summaryTokensUpdatedRef.current) / 1000
+    const tokens = Math.min(
+      AISUMMARY_BUCKET_SIZE,
+      summaryTokensRef.current + elapsed * AISUMMARY_BUCKET_REFILL,
+    )
+    if (tokens >= 1) return 0
+    return Math.ceil(((1 - tokens) / AISUMMARY_BUCKET_REFILL) * 1000)
+  }
+
+  function consumeSummaryToken(): void {
+    const now = Date.now()
+    const elapsed = (now - summaryTokensUpdatedRef.current) / 1000
+    summaryTokensRef.current =
+      Math.min(
+        AISUMMARY_BUCKET_SIZE,
+        summaryTokensRef.current + elapsed * AISUMMARY_BUCKET_REFILL,
+      ) - 1
+    summaryTokensUpdatedRef.current = now
+  }
 
   const summarizeCardWithAiSummary = async (
     card: PotentialMatch,
@@ -1532,6 +1562,12 @@ function App() {
 
       controller = new AbortController()
       summaryAbortRef.current.set(card.id, controller)
+
+      const tokenWaitMs = getSummaryTokenWaitMs()
+      if (tokenWaitMs > 0) {
+        await waitWithAbort(controller.signal, tokenWaitMs)
+      }
+      consumeSummaryToken()
 
       const maxAttempts = 3
       const retryDelayMs = [500, 1200]
@@ -1637,12 +1673,21 @@ function App() {
               apiErrorText ??
               `AI summary request failed (${response.status}).`
 
-            const shouldRetry = response.status === 429 || response.status >= 500
-            if (shouldRetry && attempt < maxAttempts) {
-              await waitWithAbort(
-                controller.signal,
-                retryDelayMs[attempt - 1] ?? retryDelayMs[retryDelayMs.length - 1],
-              )
+            const isRetryable = response.status === 429 || response.status >= 500
+            if (!isRetryable) {
+              break
+            }
+
+            if (response.status === 429) {
+              summaryTokensRef.current = 0
+              summaryTokensUpdatedRef.current = Date.now()
+            }
+
+            if (attempt < maxAttempts) {
+              const delay = response.status === 429
+                ? Math.ceil(1000 / AISUMMARY_BUCKET_REFILL)
+                : (retryDelayMs[attempt - 1] ?? retryDelayMs[retryDelayMs.length - 1])
+              await waitWithAbort(controller.signal, delay)
               continue
             }
           }
@@ -1652,6 +1697,7 @@ function App() {
           lastErrorMessage =
             lastErrorMessage ||
             `AI summary request failed (${response.status}).`
+          break
         }
 
         if (attempt < maxAttempts) {
@@ -1737,6 +1783,8 @@ function App() {
     summaryAbortRef.current.clear()
     summaryInFlightRef.current.clear()
     summaryQueueRef.current = Promise.resolve()
+    summaryTokensRef.current = AISUMMARY_BUCKET_SIZE
+    summaryTokensUpdatedRef.current = Date.now()
     setShowAiModal(false)
     setPotentialMatchesLoading(true)
     setPotentialMatchesError('')
