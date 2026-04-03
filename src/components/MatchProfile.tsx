@@ -1,5 +1,5 @@
 import type { PotentialMatch, ChartSummaryState } from '../types'
-import { slotValueLabel } from '../utils/helpers'
+import { slotValueLabel, formatInlineMarkdown } from '../utils/helpers'
 
 export function MatchProfile({
   card,
@@ -52,7 +52,7 @@ export function MatchProfile({
         </div>
       </div>
       <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-        {summaryText}
+        {summaryText ? formatInlineMarkdown(summaryText) : summaryText}
       </p>
     </section>
   )

@@ -1709,6 +1709,35 @@ export function getAiSummaryCache(sourceItemId: string): string | null {
   }
 }
 
+export function formatInlineMarkdown(text: string): ReactNode[] {
+  const tokens: ReactNode[] = []
+  const pattern = /\*\*(.+?)\*\*|\*(.+?)\*|"(.+?)"/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push(text.slice(lastIndex, match.index))
+    }
+
+    if (match[1] != null) {
+      tokens.push(<strong key={match.index}>{match[1]}</strong>)
+    } else if (match[2] != null) {
+      tokens.push(<em key={match.index}>{match[2]}</em>)
+    } else if (match[3] != null) {
+      tokens.push(<q key={match.index}>{match[3]}</q>)
+    }
+
+    lastIndex = match.index + match[0].length
+  }
+
+  if (lastIndex < text.length) {
+    tokens.push(text.slice(lastIndex))
+  }
+
+  return tokens
+}
+
 export function setAiSummaryCache(sourceItemId: string, text: string): void {
   if (isUserGeneratedItemId(sourceItemId)) {
     return
