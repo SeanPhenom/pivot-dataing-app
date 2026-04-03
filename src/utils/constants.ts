@@ -44,6 +44,8 @@ export const ACTIVE_CONNECTION_STORAGE_KEY = 'pivot-copy.active-connection-id.v1
 
 export const AISUMMARY_BUCKET_SIZE = 10
 export const AISUMMARY_BUCKET_REFILL = 0.016
+export const AISUMMARY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+export const AISUMMARY_CACHE_PREFIX = 'pivot.aisummary.'
 
 export const SWIPE_FEEDBACK_VISIBLE_MS = 1150
 export const SWIPE_FEEDBACK_CLEAR_DELAY_MS = 1450

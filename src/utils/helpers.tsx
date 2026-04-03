@@ -31,6 +31,8 @@ import {
   REALISM_MAX_MATCH_CHANCE,
   SAVED_CONNECTIONS_STORAGE_KEY,
   ACTIVE_CONNECTION_STORAGE_KEY,
+  AISUMMARY_CACHE_TTL_MS,
+  AISUMMARY_CACHE_PREFIX,
 } from './constants'
 
 export function renderColumnTypeIcon(type: ColumnTypeKey): ReactNode {
@@ -1665,4 +1667,59 @@ export function areGridItemsEqual(a: LuzmoGridItem[], b: LuzmoGridItem[]): boole
   }
 
   return a.every((item, index) => JSON.stringify(item) === JSON.stringify(b[index]))
+}
+
+function isUserGeneratedItemId(sourceItemId: string): boolean {
+  const id = sourceItemId.toLowerCase()
+  return id.startsWith('ai-') || id.startsWith('boomer-csv-')
+}
+
+export function getAiSummaryCache(sourceItemId: string): string | null {
+  if (isUserGeneratedItemId(sourceItemId)) {
+    return null
+  }
+
+  try {
+    const raw = localStorage.getItem(`${AISUMMARY_CACHE_PREFIX}${sourceItemId}`)
+    if (!raw) {
+      return null
+    }
+
+    const entry: unknown = JSON.parse(raw)
+    if (
+      !entry ||
+      typeof entry !== 'object' ||
+      !('text' in entry) ||
+      !('ts' in entry) ||
+      typeof (entry as Record<string, unknown>).text !== 'string' ||
+      typeof (entry as Record<string, unknown>).ts !== 'number'
+    ) {
+      return null
+    }
+
+    const { text, ts } = entry as { text: string; ts: number }
+    if (Date.now() - ts > AISUMMARY_CACHE_TTL_MS) {
+      localStorage.removeItem(`${AISUMMARY_CACHE_PREFIX}${sourceItemId}`)
+      return null
+    }
+
+    return text.trim().length > 0 ? text : null
+  } catch {
+    return null
+  }
+}
+
+export function setAiSummaryCache(sourceItemId: string, text: string): void {
+  if (isUserGeneratedItemId(sourceItemId)) {
+    return
+  }
+
+  try {
+    localStorage.setItem(
+      `${AISUMMARY_CACHE_PREFIX}${sourceItemId}`,
+      JSON.stringify({ text, ts: Date.now() }),
+    )
+  } catch {
+    // localStorage full or unavailable
+  }
 }

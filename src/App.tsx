@@ -81,6 +81,8 @@ import {
   waitForVizItemRender,
   extractDatasetColumnContentsFromCards,
   dedupeSlotContentsByColumn,
+  getAiSummaryCache,
+  setAiSummaryCache,
 } from './utils/helpers'
 import {
   fetchDashboardPotentialMatches,
@@ -1527,6 +1529,15 @@ function App() {
         return
       }
 
+      const cached = getAiSummaryCache(card.sourceItemId)
+      if (cached) {
+        setChartSummaries((previous) => ({
+          ...previous,
+          [card.id]: { status: 'ready', text: cached },
+        }))
+        return
+      }
+
       const chartData = extractChartDataRows(itemData, card.rawSlots)
       if (chartData.length === 0) {
         setChartSummaries((previous) => ({
@@ -1572,8 +1583,10 @@ function App() {
       const maxAttempts = 3
       const retryDelayMs = [500, 1200]
       let lastErrorMessage = 'AI summary unavailable for this widget.'
+      let attempt = 0
 
-      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      while (true) {
+        attempt += 1
         const response = await fetch(
           `${LUZMO_API_HOST.replace(/\/$/, '')}/0.1.0/aisummary`,
           {
@@ -1628,6 +1641,7 @@ function App() {
 
           const streamedText = streamed.text
           if (typeof streamedText === 'string' && streamedText.trim().length > 0) {
+            setAiSummaryCache(card.sourceItemId, streamedText)
             setChartSummaries((previous) => ({
               ...previous,
               [card.id]: {
@@ -1657,6 +1671,7 @@ function App() {
           if (response.ok) {
             const summaryText = parseAiSummaryText(bodyPayload)
             if (summaryText) {
+              setAiSummaryCache(card.sourceItemId, summaryText)
               setChartSummaries((previous) => ({
                 ...previous,
                 [card.id]: {
@@ -1673,23 +1688,25 @@ function App() {
               apiErrorText ??
               `AI summary request failed (${response.status}).`
 
-            const isRetryable = response.status === 429 || response.status >= 500
-            if (!isRetryable) {
-              break
-            }
-
             if (response.status === 429) {
               summaryTokensRef.current = 0
               summaryTokensUpdatedRef.current = Date.now()
-            }
-
-            if (attempt < maxAttempts) {
-              const delay = response.status === 429
-                ? Math.ceil(1000 / AISUMMARY_BUCKET_REFILL)
-                : (retryDelayMs[attempt - 1] ?? retryDelayMs[retryDelayMs.length - 1])
-              await waitWithAbort(controller.signal, delay)
+              const refillWait = Math.ceil(1000 / AISUMMARY_BUCKET_REFILL)
+              await waitWithAbort(controller.signal, refillWait)
+              consumeSummaryToken()
               continue
             }
+
+            const isRetryable = response.status >= 500
+            if (!isRetryable || attempt >= maxAttempts) {
+              break
+            }
+
+            await waitWithAbort(
+              controller.signal,
+              retryDelayMs[attempt - 1] ?? retryDelayMs[retryDelayMs.length - 1],
+            )
+            continue
           }
         }
 
@@ -1707,6 +1724,8 @@ function App() {
           )
           continue
         }
+
+        break
       }
 
       setChartSummaries((previous) => ({
