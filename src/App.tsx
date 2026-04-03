@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import type { AccessibleDashboard } from '@luzmo/embed'
 import { loadDataFieldsForDatasets } from '@luzmo/analytics-components-kit/utils'
 import { getOptionsConfigByItemType } from '@luzmo/dashboard-contents-types/src/lib/shared/utils/options-config'
-import { getSlotsConfigByItemType } from '@luzmo/dashboard-contents-types/src/lib/shared/utils/slots-config'
+import { getSlotsConfigByItemType } from '@luzmo/dashboard-contents-types'
 import type { SlotConfig } from '@luzmo/dashboard-contents-types/src/lib/shared/types/slots'
 import type {
   OptionConfig,
@@ -3060,7 +3060,12 @@ function App() {
       ),
     )
 
-    const requiredTypes = ['bar-chart', 'column-chart']
+    const requiredTypes = [
+      'bar-chart',
+      'column-chart',
+      'conditional-number',
+      'evolution-number',
+    ]
     const fallbackTypes = ['line-chart', 'scatter-plot']
 
     return Array.from(
